@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 工作流 · 简明观点版（ASD-STE100 风格）</title>
+<style>
+  :root {
+    --bg: #0d0e12; --panel: #15171d; --panel-2: #1a1d25; --border: #262a35;
+    --text: #e6e8ee; --muted: #9aa1b2; --faint: #6b7280; --accent: #7aa2f7;
+    --anthropic: #d97757; --openai: #6fbfae; --pi: #e2b34a; --nous: #9d8cff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", sans-serif; line-height: 1.7; }
+  header { position: sticky; top: 0; z-index: 10; background: rgba(13,14,18,.92); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+  .hwrap { max-width: 860px; margin: 0 auto; padding: 14px 20px 10px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .hwrap h1 { font-size: 17px; }
+  .hwrap h1 span { color: var(--accent); }
+  .spacer { flex: 1; }
+  .btn { border: 1px solid var(--border); background: var(--panel); color: var(--text); font-size: 13px; padding: 6px 14px; border-radius: 8px; cursor: pointer; text-decoration: none; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .chip { border: 1px solid var(--border); background: var(--panel); color: var(--muted); font-size: 12.5px; padding: 4px 12px; border-radius: 99px; cursor: pointer; user-select: none; }
+  .chip.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  main { max-width: 860px; margin: 0 auto; padding: 26px 20px 80px; }
+
+  .rules { background: linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 30px; }
+  .rules h2 { font-size: 15px; margin-bottom: 8px; }
+  .rules p { color: var(--muted); font-size: 13.5px; margin-bottom: 8px; }
+  .rules ul { padding-left: 20px; color: #c3c8d4; font-size: 13.5px; }
+  .rules li { margin-bottom: 3px; }
+  .rules .note { color: var(--faint); font-size: 12.5px; margin-top: 10px; }
+
+  .stage { margin-bottom: 40px; }
+  .stage-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+  .stage-no { font-size: 22px; font-weight: 800; color: var(--accent); }
+  .stage-title { font-size: 16px; font-weight: 700; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+  .crow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .idx { color: var(--faint); font-size: 12px; }
+  .badge { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; }
+  .badge.anthropic { color: var(--anthropic); border: 1px solid color-mix(in srgb, var(--anthropic) 45%, transparent); }
+  .badge.openai { color: var(--openai); border: 1px solid color-mix(in srgb, var(--openai) 45%, transparent); }
+  .badge.pi { color: var(--pi); border: 1px solid color-mix(in srgb, var(--pi) 45%, transparent); }
+  .badge.nous { color: var(--nous); border: 1px solid color-mix(in srgb, var(--nous) 45%, transparent); }
+  .badge.eco { color: #aeb9cf; border: 1px solid color-mix(in srgb, #aeb9cf 45%, transparent); }
+  .c-title { font-size: 15px; font-weight: 700; }
+  ol.points { list-style: none; margin-top: 8px; }
+  ol.points > li { padding: 7px 0; border-top: 1px dashed var(--border); }
+  ol.points > li:first-child { border-top: none; }
+  .en { font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace; font-size: 13.5px; color: #dbe3f4; display: block; }
+  .en::before { content: "▸ "; color: var(--accent); }
+  .zh { display: block; color: var(--muted); font-size: 13px; margin-top: 3px; padding-left: 18px; }
+  .empty { color: var(--faint); text-align: center; padding: 30px 0; }
+  footer { text-align: center; color: var(--faint); font-size: 12.5px; padding: 20px 0 40px; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="hwrap">
+    <h1>AI 工作流 <span>·</span> 简明观点版</h1>
+    <div class="spacer"></div>
+    <a class="btn" href="index.html">← 返回完整阅读器</a>
+  </div>
+</header>
+
+<main>
+  <div class="rules">
+    <h2>这一页是什么</h2>
+    <p>ASD-STE100（Simplified Technical English，简化技术英语）是欧洲航天防务工业协会为航空维修手册制定的控制语言规范：用有限的词、最简单的语法，把意思说到不可误解。这一页用它的核心纪律，把阅读器里 36 篇文章的核心观点各压缩成几句"零歧义"英文，附中文对照。</p>
+    <p>本页执行的规则：</p>
+    <ul>
+      <li>一句只说一件事；描述句不超过 20 个词</li>
+      <li>主动语态；只用一般现在时/过去时</li>
+      <li>一个词只用一个含义；选最常用的词（用 use，不用 utilize）</li>
+      <li>不用习语、比喻、口语（原文的比喻都已转成直白说法）</li>
+      <li>每条观点独立成立，可以单独读</li>
+    </ul>
+    <p class="note">诚实声明：本页遵循 ASD-STE100 的核心语法与词汇纪律；未逐词对照官方批准词表（Issue 8 约 900 个批准词）。术语（MCP、harness、sandbox）作为专有名词保留。</p>
+  </div>
+
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:26px;" id="chips">
+    <span class="chip on" data-src="all">全部</span>
+    <span class="chip" data-src="anthropic">Anthropic</span>
+    <span class="chip" data-src="openai">OpenAI</span>
+    <span class="chip" data-src="pi">Pi</span>
+    <span class="chip" data-src="nous">Nous</span>
+    <span class="chip" data-src="eco">生态 · 框架</span>
+  </div>
+
+  <!-- 阶段 1 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">1</span><span class="stage-title">地基：理解 AI 工作流与智能体</span></div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">01</span><span class="badge anthropic">Anthropic</span><span class="c-title">Building effective agents</span></div>
+    <ol class="points">
+      <li><span class="en">A workflow follows a path that developers write in code. An agent plans its own path and selects its own tools.</span><span class="zh">工作流的路径由开发者在代码里写死；智能体自己规划路径、自己选工具。</span></li>
+      <li><span class="en">Start with the simplest pattern. Add complexity only when the task needs it.</span><span class="zh">从最简单的模式开始；任务确实需要时才加复杂度。</span></li>
+      <li><span class="en">Five workflow patterns cover most needs: prompt chains, routing, parallelization, orchestrator-workers, and evaluator-optimizer.</span><span class="zh">五种工作流模式覆盖大多数需求：提示链、路由、并行化、编排者-工人、评估者-优化者。</span></li>
+      <li><span class="en">An agent needs a strong model, good tools, and clear instructions. A framework is optional.</span><span class="zh">智能体需要强模型、好工具、清晰指令；框架不是必需品。</span></li>
+      <li><span class="en">The page now carries an official note. The tool details changed after December 2024. The core concepts stay current.</span><span class="zh">页面已带官方提示：工具细节在 2024 年 12 月后已变化；核心概念仍然有效。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="openai">
+    <div class="crow"><span class="idx">02</span><span class="badge openai">OpenAI</span><span class="c-title">A practical guide to building agents</span></div>
+    <ol class="points">
+      <li><span class="en">Pick tasks with many valid paths. The agent must adapt. Errors must cost little.</span><span class="zh">选"路径多解、必须随机应变、容错成本可接受"的任务。</span></li>
+      <li><span class="en">Build one agent first. Give it a model, tools, and clear instructions.</span><span class="zh">先建单个智能体：模型、工具、清晰指令三件套。</span></li>
+      <li><span class="en">Grow to many agents step by step. Use a manager pattern, or let agents hand tasks to each other.</span><span class="zh">再逐步扩到多智能体：管理者模式，或智能体互相交接。</span></li>
+      <li><span class="en">Put three guardrails in place: an isolated sandbox, a human handoff, and system-level checks.</span><span class="zh">设三道护栏：隔离沙箱、人工接管、系统级防护。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="openai">
+    <div class="crow"><span class="idx">03</span><span class="badge openai">OpenAI</span><span class="c-title">New tools for building agents</span></div>
+    <ol class="points">
+      <li><span class="en">The Responses API is the new base for model calls.</span><span class="zh">Responses API 成为模型调用的新基座。</span></li>
+      <li><span class="en">Built-in tools search the web, search files, and control a computer.</span><span class="zh">内置工具能搜网页、搜文件、操作计算机。</span></li>
+      <li><span class="en">The Agents SDK is open source. Handoffs, guardrails, and tracing come as standard parts.</span><span class="zh">开源 Agents SDK 把交接、护栏、追踪做成标准件。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">04</span><span class="badge pi">Pi</span><span class="c-title">Prompts are code, .json/.md files are state</span></div>
+    <ol class="points">
+      <li><span class="en">Treat prompts as code. Put them in version control. Review and roll back each change.</span><span class="zh">把提示词当代码：进版本库，可评审、可回滚。</span></li>
+      <li><span class="en">Treat .json and .md files as agent state. Keep the state explicit and open to inspection.</span><span class="zh">把 .json/.md 文件当智能体状态：显式、可检查。</span></li>
+      <li><span class="en">Reliable behavior comes from visible state. It does not come from a long chat history.</span><span class="zh">可靠的行为来自可见的状态，不来自很长的聊天历史。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <!-- 阶段 2 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">2</span><span class="stage-title">核心机制：上下文、工具与执行环境</span></div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">05</span><span class="badge anthropic">Anthropic</span><span class="c-title">Effective context engineering for AI agents</span></div>
+    <ol class="points">
+      <li><span class="en">The context window is a budget. Attention gets thin as the context grows.</span><span class="zh">上下文窗口是预算；上下文越长，注意力越稀。</span></li>
+      <li><span class="en">Three methods manage the budget: compress old steps, write structured notes, and move work to sub-agents.</span><span class="zh">三种手段管理预算：压缩旧步骤、写结构化笔记、把工作分流给子代理。</span></li>
+      <li><span class="en">Load information late. Give an index first. Fetch the full text only when needed.</span><span class="zh">信息晚点加载：先给索引，需要时才取全文。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">06</span><span class="badge anthropic">Anthropic</span><span class="c-title">The "think" tool</span></div>
+    <ol class="points">
+      <li><span class="en">The think tool does nothing. It only gives the model a pause between tool calls.</span><span class="zh">think 工具什么都不做，只在工具调用之间制造一个停顿。</span></li>
+      <li><span class="en">In the pause, the model reviews its state. Accuracy improves on hard tool tasks.</span><span class="zh">停顿中模型复盘当前状态；困难工具任务上的准确率因此提升。</span></li>
+      <li><span class="en">A change in process timing can lift performance more than a new model.</span><span class="zh">改流程时机带来的提升，可能大过换一个模型。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">07</span><span class="badge anthropic">Anthropic</span><span class="c-title">Writing effective tools for agents — with agents</span></div>
+    <ol class="points">
+      <li><span class="en">A tool description is documentation for a model. Write it like documentation.</span><span class="zh">工具描述是写给模型的文档；请按文档标准写。</span></li>
+      <li><span class="en">Give each tool a clear name, one clear purpose, and typed inputs. Return short, structured results.</span><span class="zh">每个工具：名字清楚、用途单一、输入有类型；返回短而结构化的结果。</span></li>
+      <li><span class="en">Flag every failure with a plain reason. Never return a long raw dump.</span><span class="zh">每个失败都给明原因；不要返回大段原始数据。</span></li>
+      <li><span class="en">Use one agent to test and improve the tools of another agent.</span><span class="zh">用一个智能体去测试并改进另一个智能体的工具。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">08</span><span class="badge pi">Pi</span><span class="c-title">MCP vs CLI: Benchmarking Tools for Coding Agents</span></div>
+    <ol class="points">
+      <li><span class="en">The author ran the same coding tasks through MCP tools and through plain CLI commands.</span><span class="zh">作者让同一批编码任务分别走 MCP 工具和普通 CLI 命令。</span></li>
+      <li><span class="en">Well-made CLI tools matched or beat the MCP tools in the benchmark.</span><span class="zh">基准结果：做得好的 CLI 不输甚至胜过 MCP。</span></li>
+      <li><span class="en">Interface clarity decides tool quality. The protocol form matters less.</span><span class="zh">接口清晰度决定工具质量；协议形态没那么重要。</span></li>
+      <li><span class="en">Run your own small benchmark before you pick a tool layer.</span><span class="zh">选工具层之前，先跑自己的小基准。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">09</span><span class="badge pi">Pi</span><span class="c-title">What if you don't need MCP at all?</span></div>
+    <ol class="points">
+      <li><span class="en">Scripts plus a shell often make a simpler integration layer.</span><span class="zh">脚本加 shell 往往就是更简单的集成层。</span></li>
+      <li><span class="en">MCP adds cost: more tokens, more code to maintain, and harder debugging.</span><span class="zh">MCP 带来三种成本：更多 token、更多维护代码、更难的调试。</span></li>
+      <li><span class="en">Choose the layer that you can debug fastest.</span><span class="zh">选你能最快调试的那一层。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">10</span><span class="badge anthropic">Anthropic</span><span class="c-title">Code execution with MCP</span></div>
+    <ol class="points">
+      <li><span class="en">Show MCP tools to the model as a code API on the file system.</span><span class="zh">把 MCP 工具呈现为文件系统上的代码 API。</span></li>
+      <li><span class="en">The model writes code that calls the tools. It loads only the definitions it needs.</span><span class="zh">模型写代码来调用工具；只加载需要的定义。</span></li>
+      <li><span class="en">Intermediate results stay in files. Token use falls sharply.</span><span class="zh">中间结果留在文件里；token 消耗大幅下降。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">11</span><span class="badge anthropic">Anthropic</span><span class="c-title">Introducing advanced tool use</span></div>
+    <ol class="points">
+      <li><span class="en">Programmatic tool calling lets the model call tools inside a code loop.</span><span class="zh">程序化工具调用让模型在代码循环里连续调工具。</span></li>
+      <li><span class="en">Tool search finds the right tool from a large set, on demand.</span><span class="zh">工具搜索按需从大工具集中找到合适的那个。</span></li>
+      <li><span class="en">These platform features scale the tool count from tens to hundreds.</span><span class="zh">这些平台能力把工具规模从几十个扩到几百个。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">12</span><span class="badge anthropic">Anthropic</span><span class="c-title">Equipping agents for the real world with Agent Skills</span></div>
+    <ol class="points">
+      <li><span class="en">A skill is a folder with instructions, scripts, and files for one domain.</span><span class="zh">技能是一个文件夹：某领域的指令、脚本与资源。</span></li>
+      <li><span class="en">The agent reads a short summary first. It loads the full skill only when needed.</span><span class="zh">先读短摘要，需要时才加载全文（渐进披露）。</span></li>
+      <li><span class="en">Teams can share skills. Skills turn team knowledge into reusable agent parts.</span><span class="zh">技能可共享：把团队知识变成可复用的智能体部件。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <!-- 阶段 3 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">3</span><span class="stage-title">实战：四大平台的编程智能体</span></div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">13</span><span class="badge anthropic">Anthropic</span><span class="c-title">Claude Code: Best practices for agentic coding</span></div>
+    <ol class="points">
+      <li><span class="en">Write team rules into a CLAUDE.md file. The agent reads it first.</span><span class="zh">把团队约定写进 CLAUDE.md；智能体最先读它。</span></li>
+      <li><span class="en">Work in four steps: explore, plan, code, commit.</span><span class="zh">四步节奏：探索、计划、编码、提交。</span></li>
+      <li><span class="en">Custom slash commands turn repeated team workflows into one command.</span><span class="zh">自定义斜杠命令把重复的团队流程变成一条命令。</span></li>
+      <li><span class="en">Headless mode runs the agent inside CI, with no interactive session.</span><span class="zh">headless 模式让智能体进 CI，无需交互会话。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="openai">
+    <div class="crow"><span class="idx">14</span><span class="badge openai">OpenAI</span><span class="c-title">Introducing Codex</span></div>
+    <ol class="points">
+      <li><span class="en">Codex is a cloud agent for software engineering. It runs many tasks in parallel.</span><span class="zh">Codex 是云端软件工程智能体；多任务并行。</span></li>
+      <li><span class="en">Each task runs in its own sandbox with the repository loaded.</span><span class="zh">每个任务在自己的沙箱里跑，代码库已预载。</span></li>
+      <li><span class="en">The launch post is outdated. OpenAI links to newer pages for current workflows.</span><span class="zh">这篇发布文已被官方标注过时，并指向新文档。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="openai">
+    <div class="crow"><span class="idx">15</span><span class="badge openai">OpenAI</span><span class="c-title">Introducing AgentKit</span></div>
+    <ol class="points">
+      <li><span class="en">AgentKit is a toolkit: a visual builder, a chat UI, eval tools, and a connector registry.</span><span class="zh">AgentKit 是一套工具：可视化 Builder、ChatKit、评估、连接器注册表。</span></li>
+      <li><span class="en">The builder draws workflows as graphs on a canvas. Version control and evaluation are built in.</span><span class="zh">Builder 在画布上把工作流画成图；版本控制与评估内置。</span></li>
+      <li><span class="en">Compare this low-code path with the code-first path of Skills and MCP.</span><span class="zh">拿这条低代码路线，对照 Skills+MCP 的代码优先路线。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">16</span><span class="badge pi">Pi</span><span class="c-title">What I learned building an opinionated and minimal coding agent</span></div>
+    <ol class="points">
+      <li><span class="en">Pi has a small core. It ships without MCP, sub-agents, or plan mode.</span><span class="zh">Pi 内核很小；不带 MCP、子代理、计划模式。</span></li>
+      <li><span class="en">Users build their own workflows on top, with code.</span><span class="zh">工作流由使用者用代码在内核之上自行组装。</span></li>
+      <li><span class="en">The author ships the agent as a library, not as a product.</span><span class="zh">作者把智能体做成库，而不是产品。</span></li>
+      <li><span class="en">A small core stays easy to change. A large product gets hard to change.</span><span class="zh">小内核保持易改；大产品越来越难改。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">17</span><span class="badge pi">Pi</span><span class="c-title">Armin is wrong and here's why</span></div>
+    <ol class="points">
+      <li><span class="en">Armin Ronacher says LLM APIs are a state synchronization problem in disguise.</span><span class="zh">Armin Ronacher 认为 LLM API 是变相的状态同步问题。</span></li>
+      <li><span class="en">The author disagrees and answers each point in the post.</span><span class="zh">本文作者不同意，逐条回应。</span></li>
+      <li><span class="en">The debate covers prompt caching, the message model, and local-first designs.</span><span class="zh">辩论覆盖前缀缓存、消息抽象、本地优先设计。</span></li>
+      <li><span class="en">The real question is this: who owns the state of a long agent session?</span><span class="zh">真正的问题是：长会话的状态归谁管？</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="nous">
+    <div class="crow"><span class="idx">18</span><span class="badge nous">Nous Research</span><span class="c-title">Hermes Agent — The agent that grows with you</span></div>
+    <ol class="points">
+      <li><span class="en">Hermes Agent is an open-source agent. You host it on your own server.</span><span class="zh">Hermes Agent 开源，部署在你自己的服务器上。</span></li>
+      <li><span class="en">It keeps a permanent memory. It writes new skills from its own experience.</span><span class="zh">它有持久记忆，并从自己的经验中生成新技能。</span></li>
+      <li><span class="en">One gateway connects it to Telegram, Discord, Slack, and email.</span><span class="zh">一个网关连到 Telegram、Discord、Slack 和邮件。</span></li>
+      <li><span class="en">It runs sub-agents in isolated sandboxes. It runs scheduled jobs from plain-language instructions.</span><span class="zh">子代理在隔离沙箱中运行；自然语言即可设定时任务。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="nous">
+    <div class="crow"><span class="idx">19</span><span class="badge nous">Nous Research</span><span class="c-title">Refactoring Hermes with 1,393 agents</span></div>
+    <ol class="points">
+      <li><span class="en">The team used their own agent to clean about one million lines of Python.</span><span class="zh">团队用自家智能体清理了约一百万行 Python。</span></li>
+      <li><span class="en">The run took 19 hours and started 1,393 sub-agents.</span><span class="zh">全程 19 小时，动用 1393 个子代理。</span></li>
+      <li><span class="en">The token cost was about $19,000. The team priced the saved work at $1.8 million.</span><span class="zh">token 成本约 1.9 万美元；团队估算省下等值 180 万美元的工程量。</span></li>
+      <li><span class="en">Big autonomous jobs need a clear split into small, checkable sub-tasks.</span><span class="zh">大型自主任务必须切成小而可检查的子任务。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">20</span><span class="badge anthropic">Anthropic</span><span class="c-title">How we built our multi-agent research system</span></div>
+    <ol class="points">
+      <li><span class="en">A lead agent splits the research task. Sub-agents search in parallel. A writer merges the results.</span><span class="zh">主智能体拆任务；子代理并行搜索；最后合并成文。</span></li>
+      <li><span class="en">Most gains came from engineering details: prompts, parallel counts, and clear task handovers.</span><span class="zh">收益主要来自工程细节：提示词、并行度、清晰交接。</span></li>
+      <li><span class="en">Multi-agent runs used about 15 times more tokens than a single chat turn.</span><span class="zh">多智能体的 token 消耗约为单轮对话的 15 倍。</span></li>
+      <li><span class="en">Use multi-agent only when the task is broad and parallel by nature.</span><span class="zh">只有任务天然宽泛且可并行时，才值得用多智能体。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">21</span><span class="badge anthropic">Anthropic</span><span class="c-title">Building a C compiler with a team of parallel Claudes</span></div>
+    <ol class="points">
+      <li><span class="en">Each Claude built one module of a C compiler. The agents ran in parallel.</span><span class="zh">每个 Claude 负责编译器的一个模块，并行开发。</span></li>
+      <li><span class="en">Humans stepped in only at key points.</span><span class="zh">人只在关键节点介入。</span></li>
+      <li><span class="en">Team shape, clear interfaces, and merge rhythm decided the output quality.</span><span class="zh">团队拓扑、接口约定、合并节奏决定产出质量。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <!-- 阶段 4 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">4</span><span class="stage-title">长时运行与可靠性</span></div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">22</span><span class="badge anthropic">Anthropic</span><span class="c-title">Effective harnesses for long-running agents</span></div>
+    <ol class="points">
+      <li><span class="en">A long job spans many context windows. Each new window starts with no memory.</span><span class="zh">长任务跨多个上下文窗口；每个新窗口都从零记忆开始。</span></li>
+      <li><span class="en">The harness writes handover notes. The next window reads them before it works.</span><span class="zh">harness 写交接笔记；下一个窗口先读再干活。</span></li>
+      <li><span class="en">Three parts help: a first-turn briefing, a checklist, and checkpoints.</span><span class="zh">三件套：首回合简报、检查清单、检查点。</span></li>
+      <li><span class="en">The harness is a second lever, beside the model itself.</span><span class="zh">harness 是模型之外的第二个杠杆。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">23</span><span class="badge anthropic">Anthropic</span><span class="c-title">Harness design for long-running application development</span></div>
+    <ol class="points">
+      <li><span class="en">The team improved long autonomous coding with harness changes, not with model changes.</span><span class="zh">团队靠改 harness（而非换模型）提升长时自主编码。</span></li>
+      <li><span class="en">They tuned prompts, tools, and process steps. The same model scored far above its baseline.</span><span class="zh">调提示词、工具与流程步骤；同一个模型远超基线。</span></li>
+      <li><span class="en">Treat harness design as an engineering discipline with tests.</span><span class="zh">把 harness 设计当作带测试的工程学科。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">24</span><span class="badge anthropic">Anthropic</span><span class="c-title">Scaling Managed Agents: Decoupling the brain from the hands</span></div>
+    <ol class="points">
+      <li><span class="en">Harnesses carry assumptions about what the model cannot do. These assumptions age as models improve.</span><span class="zh">harness 内含"模型不会什么"的假设；模型进步后假设会过时。</span></li>
+      <li><span class="en">Anthropic split the agent into three interfaces: brain, hands, and session.</span><span class="zh">Anthropic 把智能体拆成三个接口：大脑、双手、会话。</span></li>
+      <li><span class="en">Each part can fail or be replaced alone.</span><span class="zh">每个部件可以单独失败、单独替换。</span></li>
+      <li><span class="en">Stable interfaces let the model change under them without a rebuild.</span><span class="zh">接口稳定，模型更替时上层不必重建。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">25</span><span class="badge anthropic">Anthropic</span><span class="c-title">Beyond permission prompts: sandboxing</span></div>
+    <ol class="points">
+      <li><span class="en">Old flow: ask the user at every step. New flow: isolate first, then give freedom.</span><span class="zh">旧流程每步问人；新流程先隔离、再放权。</span></li>
+      <li><span class="en">The sandbox limits file access and network access.</span><span class="zh">沙箱限制文件访问与网络访问。</span></li>
+      <li><span class="en">Autonomy is safe when the damage from one failure stays small.</span><span class="zh">单次失败的损失可控时，自治才是安全的。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">26</span><span class="badge anthropic">Anthropic</span><span class="c-title">How we built Claude Code auto mode</span></div>
+    <ol class="points">
+      <li><span class="en">Users approved 93 percent of permission prompts. Careful checking faded with each click.</span><span class="zh">用户批准了 93% 的权限弹窗；审查注意力随点击递减。</span></li>
+      <li><span class="en">Claude Code now uses classifiers to decide some permission requests.</span><span class="zh">Claude Code 现在用分类器决策一部分权限请求。</span></li>
+      <li><span class="en">The classifiers handle simple decisions. The user decides the hard ones.</span><span class="zh">分类器管简单决策；人只管难的。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">27</span><span class="badge anthropic">Anthropic</span><span class="c-title">Demystifying evals for AI agents</span></div>
+    <ol class="points">
+      <li><span class="en">Agents run many turns and change state. Single test points cannot grade that.</span><span class="zh">智能体多轮运行且状态可变；单点测试无法评分。</span></li>
+      <li><span class="en">Build three layers: custom graders, trace grading, and production observation.</span><span class="zh">搭三层：自定义评估器、轨迹评估、生产观测。</span></li>
+      <li><span class="en">Evals pay off over time. Prompt changes stop being guesses.</span><span class="zh">评估的价值随时间复利；改提示词不再是猜。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">28</span><span class="badge anthropic">Anthropic</span><span class="c-title">A postmortem of three recent issues</span></div>
+    <ol class="points">
+      <li><span class="en">Anthropic published a full account of three service failures.</span><span class="zh">Anthropic 完整公开了三起服务故障的复盘。</span></li>
+      <li><span class="en">The report shows gaps in change isolation and staged rollouts.</span><span class="zh">报告暴露了变更隔离与灰度发布的缺口。</span></li>
+      <li><span class="en">Treat platform failure as normal. Design the workflow to survive it.</span><span class="zh">把平台故障当常态；工作流要能在故障中存活。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <!-- 阶段 5 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">5</span><span class="stage-title">走出文章：延伸与动手</span></div>
+
+  <div class="card" data-src="nous">
+    <div class="crow"><span class="idx">29</span><span class="badge nous">Nous Research</span><span class="c-title">Hermes 4 Technical Report</span></div>
+    <ol class="points">
+      <li><span class="en">Hermes 4 is an open-weight model family with hybrid reasoning.</span><span class="zh">Hermes 4 是开源权重的混合推理模型系列。</span></li>
+      <li><span class="en">The training steers outputs toward user values, with fewer content restrictions.</span><span class="zh">训练把输出引向用户价值，内容限制更少。</span></li>
+      <li><span class="en">This model family powers the Hermes Agent on your own hardware.</span><span class="zh">这个模型系列在本地硬件上支撑 Hermes Agent。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="pi">
+    <div class="crow"><span class="idx">30</span><span class="badge pi">Pi</span><span class="c-title">动手环节</span></div>
+    <ol class="points">
+      <li><span class="en">Install one platform this week. Use it on one real, small task.</span><span class="zh">本周装一个平台；拿一件真实的小任务上手。</span></li>
+      <li><span class="en">Pi installs as one binary. Hermes installs with one script on a server.</span><span class="zh">Pi 是单个二进制；Hermes 在服务器上一条脚本装好。</span></li>
+      <li><span class="en">Automate one repeated job. Measure the time before and after.</span><span class="zh">自动化一件重复劳动；前后各测一次耗时。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <!-- 阶段 6 -->
+  <section class="stage"><div class="stage-head"><span class="stage-no">6</span><span class="stage-title">延伸 · 第一篇的引用网络</span></div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">31</span><span class="badge anthropic">Anthropic</span><span class="c-title">Patterns for building agents (official cookbook)</span></div>
+    <ol class="points">
+      <li><span class="en">This cookbook shows working code for each pattern from the first article.</span><span class="zh">这本 cookbook 给第一篇每个模式配了可运行代码。</span></li>
+      <li><span class="en">A chain adds program gates between steps. Parallel tasks split and then merge.</span><span class="zh">提示链在步骤间加程序闸门；并行任务先分后合。</span></li>
+      <li><span class="en">Copy the pattern code before you write your own framework.</span><span class="zh">先抄模式代码，再考虑自研框架。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">32</span><span class="badge anthropic">Anthropic</span><span class="c-title">Introducing Model Context Protocol</span></div>
+    <ol class="points">
+      <li><span class="en">MCP is an open protocol. It connects models to data sources and tools through one standard.</span><span class="zh">MCP 是开放协议：用一个标准连接模型与数据源、工具。</span></li>
+      <li><span class="en">One MCP server serves every MCP client. Teams stop building one-off integrations.</span><span class="zh">一个 MCP 服务端服务所有客户端；不再逐家做一次性集成。</span></li>
+      <li><span class="en">MCP is now an industry standard across major vendors.</span><span class="zh">如今 MCP 已是各大厂商通用的行业事实标准。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">33</span><span class="badge anthropic">Anthropic</span><span class="c-title">Tool use (general availability)</span></div>
+    <ol class="points">
+      <li><span class="en">Tool use reached general availability. Any application can give models external functions.</span><span class="zh">工具调用正式商用；任何应用都能给模型外接函数。</span></li>
+      <li><span class="en">The model decides when to call. The app runs the function and returns the result.</span><span class="zh">模型决定何时调用；应用执行函数并回传结果。</span></li>
+      <li><span class="en">This loop is the base of every agent today.</span><span class="zh">这个循环是今天一切智能体的地基。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">34</span><span class="badge anthropic">Anthropic</span><span class="c-title">SWE-bench Sonnet</span></div>
+    <ol class="points">
+      <li><span class="en">Anthropic tested Claude 3.5 Sonnet on real GitHub issues from SWE-bench.</span><span class="zh">Anthropic 用 SWE-bench 的真实 GitHub issue 测 Claude 3.5 Sonnet。</span></li>
+      <li><span class="en">With a scaffold for editing and testing, the model resolved about half of the verified set.</span><span class="zh">配上编辑与测试脚手架，Verified 集约解决一半。</span></li>
+      <li><span class="en">This result made coding agents a measured field, not a demo.</span><span class="zh">这个结果让编程智能体从演示变成可测量的领域。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="anthropic">
+    <div class="crow"><span class="idx">35</span><span class="badge anthropic">Anthropic</span><span class="c-title">Agent SDK overview</span></div>
+    <ol class="points">
+      <li><span class="en">The Agent SDK is Claude Code as a library. It runs in your own process.</span><span class="zh">Agent SDK 是库形态的 Claude Code；跑在你自己的进程里。</span></li>
+      <li><span class="en">You get its built-in tools, permissions, sessions, hooks, sub-agents, and skills.</span><span class="zh">内置工具、权限、会话、hooks、子代理、技能全套继承。</span></li>
+      <li><span class="en">Four layers exist: raw API, this SDK, managed hosting, and the terminal product.</span><span class="zh">四层光谱：裸 API、本 SDK、托管服务、终端产品。</span></li>
+      <li><span class="en">Pick the SDK when you embed an agent in your own product.</span><span class="zh">要把智能体嵌进自家产品时，选 SDK。</span></li>
+    </ol>
+  </div>
+
+  <div class="card" data-src="eco">
+    <div class="crow"><span class="idx">36</span><span class="badge eco">生态 · 框架</span><span class="c-title">Framework landscape: Strands, Rivet & Vellum</span></div>
+    <ol class="points">
+      <li><span class="en">Strands is an open-source, code-first framework from AWS.</span><span class="zh">Strands 是 AWS 的开源、代码优先框架。</span></li>
+      <li><span class="en">Rivet is a visual editor. You draw the agent graph on a canvas.</span><span class="zh">Rivet 是可视化编辑器；智能体图在画布上拖出来。</span></li>
+      <li><span class="en">Vellum began as a low-code platform. Its 2026 site presents it as a personal AI assistant.</span><span class="zh">Vellum 起家于低代码平台；2026 年官网已把自己定位为个人 AI 助理。</span></li>
+      <li><span class="en">A framework gives speed at the start. It can block you later. Check the exit path first.</span><span class="zh">框架给起步速度，也可能卡住后续；先看"退出路径"再上船。</span></li>
+    </ol>
+  </div>
+  </section>
+
+  <div class="empty" id="emptyMsg" style="display:none">（该来源暂无条目）</div>
+
+  <footer>
+    生成于 2026-10-03 · 36 个条目 · 每条英文遵循 ASD-STE100 核心纪律（一句一事 / ≤20 词 / 主动语态 / 一词一义 / 无习语）<br>
+    <a href="index.html">← 返回完整阅读器（含 1000–3000 字深度解读）</a>
+  </footer>
+</main>
+
+<script>
+document.querySelectorAll("#chips .chip").forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll("#chips .chip").forEach(x => x.classList.remove("on"));
+    c.classList.add("on");
+    const src = c.dataset.src;
+    let shown = 0;
+    document.querySelectorAll(".card").forEach(card => {
+      const show = src === "all" || card.dataset.src === src;
+      card.style.display = show ? "" : "none";
+      if (show) shown++;
+    });
+    document.querySelectorAll(".stage").forEach(s => {
+      const any = Array.from(s.querySelectorAll(".card")).some(k => k.style.display !== "none");
+      s.style.display = any ? "" : "none";
+    });
+    document.getElementById("emptyMsg").style.display = shown ? "none" : "";
+  };
+});
+</script>
+</body>
+</html>

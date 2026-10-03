@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 工作流 · 递进阅读</title>
+<style>
+  :root {
+    --bg: #0d0e12;
+    --panel: #15171d;
+    --panel-2: #1a1d25;
+    --border: #262a35;
+    --text: #e6e8ee;
+    --muted: #9aa1b2;
+    --faint: #6b7280;
+    --anthropic: #d97757;
+    --openai: #6fbfae;
+    --pi: #e2b34a;
+    --nous: #9d8cff;
+    --accent: #7aa2f7;
+    --ok: #4ade80;
+    --lv1: #4ade80;
+    --lv2: #60a5fa;
+    --lv3: #f472b6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.65;
+  }
+  code, .mono { font-family: ui-monospace, "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace; }
+
+  /* ---------- 顶栏 ---------- */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(13,14,18,.88);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  .hwrap { max-width: 1200px; margin: 0 auto; padding: 14px 20px 10px; }
+  .htop { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+  .htop h1 { font-size: 19px; letter-spacing: .5px; }
+  .htop h1 span { color: var(--accent); }
+  .hcount { color: var(--muted); font-size: 13px; }
+  .hbar { flex: 1; min-width: 160px; height: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 99px; overflow: hidden; }
+  .hbar > div { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--ok)); transition: width .4s ease; }
+  .hpct { font-size: 13px; color: var(--ok); min-width: 84px; text-align: right; }
+  .hctrl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+  .chip {
+    border: 1px solid var(--border); background: var(--panel);
+    color: var(--muted); font-size: 12.5px; padding: 4px 12px; border-radius: 99px;
+    cursor: pointer; user-select: none; transition: all .15s;
+  }
+  .chip:hover { color: var(--text); border-color: var(--faint); }
+  .chip.on { color: var(--bg); font-weight: 600; }
+  .chip.on[data-src="anthropic"] { background: var(--anthropic); border-color: var(--anthropic); }
+  .chip.on[data-src="openai"] { background: var(--openai); border-color: var(--openai); }
+  .chip.on[data-src="pi"] { background: var(--pi); border-color: var(--pi); }
+  .chip.on[data-src="nous"] { background: var(--nous); border-color: var(--nous); }
+  .chip.on[data-src="eco"] { background: #aeb9cf; border-color: #aeb9cf; }
+  .chip.on[data-src="all"] { background: var(--accent); border-color: var(--accent); }
+  .spacer { flex: 1; }
+  .btn {
+    border: 1px solid var(--border); background: var(--panel); color: var(--text);
+    font-size: 13px; padding: 6px 14px; border-radius: 8px; cursor: pointer; transition: all .15s;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #0b0d14; font-weight: 700; }
+  .btn.primary:hover { filter: brightness(1.12); color: #0b0d14; }
+  .btn.ghost { background: transparent; }
+
+  /* ---------- 布局 ---------- */
+  .layout { max-width: 1200px; margin: 0 auto; padding: 26px 20px 80px; display: grid; grid-template-columns: 250px 1fr; gap: 34px; }
+  nav.side { position: sticky; top: 96px; align-self: start; font-size: 13.5px; }
+  nav.side .st { margin-bottom: 18px; }
+  nav.side .st-title { color: var(--muted); font-size: 12px; letter-spacing: 1px; margin-bottom: 6px; }
+  nav.side a { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); text-decoration: none; padding: 5px 8px; border-radius: 7px; }
+  nav.side a:hover { background: var(--panel); color: var(--text); }
+  nav.side a .n { color: var(--faint); font-size: 12px; }
+  nav.side .tip { color: var(--faint); font-size: 12px; border-top: 1px solid var(--border); padding-top: 12px; margin-top: 16px; line-height: 1.7; }
+  nav.side kbd { background: var(--panel-2); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; }
+
+  /* ---------- 简介卡 ---------- */
+  .hero {
+    background: linear-gradient(135deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--border); border-radius: 14px; padding: 22px 24px; margin-bottom: 34px;
+  }
+  .hero h2 { font-size: 16px; margin-bottom: 8px; }
+  .hero p { color: var(--muted); font-size: 14px; }
+  .hero .srcs { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .srctag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- 阶段 ---------- */
+  .stage { margin-bottom: 46px; scroll-margin-top: 100px; }
+  .stage-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 4px; }
+  .stage-no { font-size: 26px; font-weight: 800; color: var(--accent); opacity: .9; }
+  .stage-title { font-size: 18px; font-weight: 700; }
+  .stage-prog { margin-left: auto; font-size: 12.5px; color: var(--muted); }
+  .stage-goal { color: var(--muted); font-size: 13.5px; margin-bottom: 16px; max-width: 720px; }
+
+  /* ---------- 文章卡 ---------- */
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 13px;
+    padding: 18px 20px; margin-bottom: 14px; transition: border-color .15s, transform .15s, opacity .3s;
+    position: relative;
+  }
+  .card:hover { border-color: #3a4152; transform: translateY(-1px); }
+  .card.read { opacity: .62; }
+  .card.read .c-title { text-decoration: line-through; text-decoration-color: var(--faint); text-decoration-thickness: 1px; }
+  .card.read:hover { opacity: .9; }
+  .crow1 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 7px; }
+  .idx { color: var(--faint); font-size: 12px; min-width: 26px; }
+  .badge { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 99px; letter-spacing: .3px; }
+  .badge.anthropic { color: var(--anthropic); border: 1px solid color-mix(in srgb, var(--anthropic) 45%, transparent); background: color-mix(in srgb, var(--anthropic) 12%, transparent); }
+  .badge.openai { color: var(--openai); border: 1px solid color-mix(in srgb, var(--openai) 45%, transparent); background: color-mix(in srgb, var(--openai) 12%, transparent); }
+  .badge.pi { color: var(--pi); border: 1px solid color-mix(in srgb, var(--pi) 45%, transparent); background: color-mix(in srgb, var(--pi) 12%, transparent); }
+  .badge.nous { color: var(--nous); border: 1px solid color-mix(in srgb, var(--nous) 45%, transparent); background: color-mix(in srgb, var(--nous) 12%, transparent); }
+  .badge.eco { color: #aeb9cf; border: 1px solid color-mix(in srgb, #aeb9cf 45%, transparent); background: color-mix(in srgb, #aeb9cf 10%, transparent); }
+  .lv { font-size: 11.5px; font-weight: 600; padding: 2px 9px; border-radius: 99px; }
+  .lv.入门 { color: var(--lv1); background: color-mix(in srgb, var(--lv1) 12%, transparent); }
+  .lv.进阶 { color: var(--lv2); background: color-mix(in srgb, var(--lv2) 12%, transparent); }
+  .lv.深入 { color: var(--lv3); background: color-mix(in srgb, var(--lv3) 12%, transparent); }
+  .lv.延伸 { color: var(--muted); background: var(--panel-2); }
+  .meta { color: var(--faint); font-size: 12px; }
+  .check {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
+    border: 1px solid var(--border); border-radius: 99px; padding: 3px 11px; transition: all .15s;
+  }
+  .check:hover { border-color: var(--ok); color: var(--ok); }
+  .check.on { background: color-mix(in srgb, var(--ok) 16%, transparent); border-color: var(--ok); color: var(--ok); }
+  .c-title { font-size: 16.5px; font-weight: 700; cursor: pointer; }
+  .c-title:hover { color: var(--accent); }
+  .c-zh { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .c-points { margin: 10px 0 4px; padding-left: 2px; }
+  .c-points li { list-style: none; color: #c3c8d4; font-size: 13.5px; padding-left: 18px; position: relative; margin-bottom: 4px; }
+  .c-points li::before { content: "▸"; position: absolute; left: 2px; color: var(--accent); font-size: 11px; top: 2px; }
+  .c-why { font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--border); padding: 2px 0 2px 10px; margin-top: 8px; }
+  .c-why b { color: var(--text); font-weight: 600; }
+  .c-actions { display: flex; gap: 10px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+  .c-link { font-size: 13px; color: var(--accent); text-decoration: none; font-weight: 600; }
+  .c-link:hover { text-decoration: underline; }
+  .c-link::after { content: " ↗"; font-size: 11px; }
+  .c-focus { font-size: 12px; color: var(--faint); cursor: pointer; background: none; border: none; }
+  .c-focus:hover { color: var(--accent); }
+  .extra-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .extra-links a { font-size: 12.5px; color: var(--accent); text-decoration: none; }
+  .extra-links a:hover { text-decoration: underline; }
+  .empty { color: var(--faint); text-align: center; padding: 40px 0; font-size: 14px; }
+  details.depth { margin-top: 12px; border-top: 1px dashed var(--border); padding-top: 10px; }
+  details.depth summary { cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 600; user-select: none; }
+  details.depth[open] summary { margin-bottom: 8px; }
+  .depth-body { color: #c3c8d4; font-size: 13.5px; line-height: 1.85; }
+  .depth-body h4 { color: var(--text); font-size: 14px; margin: 14px 0 6px; }
+  .depth-body p { margin-bottom: 8px; }
+  .depth-body ul { padding-left: 18px; margin-bottom: 8px; }
+  .depth-body li { margin-bottom: 4px; }
+  .depth-body strong { color: var(--text); }
+  .depth-body code { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+
+  /* ---------- 专注模式 ---------- */
+  .focus { position: fixed; inset: 0; z-index: 100; background: rgba(10,11,15,.96); backdrop-filter: blur(14px); display: none; overflow-y: auto; }
+  .focus.open { display: block; }
+  .fwrap { max-width: 760px; margin: 0 auto; padding: 46px 22px 120px; }
+  .ftop { display: flex; align-items: center; gap: 12px; margin-bottom: 26px; }
+  .fstep { color: var(--muted); font-size: 13px; }
+  .fbar { flex: 1; height: 6px; background: var(--panel-2); border-radius: 99px; border: 1px solid var(--border); overflow: hidden; }
+  .fbar > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--ok)); transition: width .3s; }
+  .fexit { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 4px 12px; cursor: pointer; font-size: 12.5px; }
+  .fexit:hover { color: var(--text); border-color: var(--faint); }
+  .fcard { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; padding: 30px 32px; }
+  .fcard .crow1 { margin-bottom: 12px; }
+  .fcard .c-title { font-size: 22px; cursor: default; }
+  .fcard .c-zh { font-size: 14.5px; }
+  .fcard .c-points { margin: 16px 0 6px; }
+  .fcard .c-points li { font-size: 14.5px; margin-bottom: 7px; }
+  .fstage { color: var(--faint); font-size: 12.5px; letter-spacing: 1px; margin-bottom: 14px; }
+  .fnav { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+  .fnav .btn { padding: 9px 18px; font-size: 14px; }
+  .fhint { text-align: center; color: var(--faint); font-size: 12px; margin-top: 22px; }
+  .fhint kbd { background: var(--panel-2); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 0 6px; font-size: 11px; }
+  .fdone { text-align: center; padding: 60px 0; }
+  .fdone h2 { font-size: 24px; margin-bottom: 10px; }
+  .fdone p { color: var(--muted); margin-bottom: 22px; }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.side { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="htop">
+      <h1>AI 工作流 <span>·</span> 递进阅读</h1>
+      <div class="hbar"><div id="totalBar"></div></div>
+      <div class="hpct" id="totalPct">0%</div>
+      <div class="hcount" id="totalText"></div>
+    </div>
+    <div class="hctrl">
+      <span class="chip on" data-src="all">全部来源</span>
+      <span class="chip" data-src="anthropic">Anthropic · Claude</span>
+      <span class="chip" data-src="openai">OpenAI</span>
+      <span class="chip" data-src="pi">Pi</span>
+      <span class="chip" data-src="nous">Nous · Hermes</span>
+      <span class="chip" data-src="eco">生态 · 框架</span>
+      <span class="chip" id="toggleRead">只看未读</span>
+      <div class="spacer"></div>
+      <button class="btn primary" id="startFocus">▶ 开始专注阅读</button>
+      <a class="btn" href="ste.html" style="text-decoration:none">📐 简明 STE 版</a>
+      <button class="btn ghost" id="resetBtn">重置进度</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side" id="sideNav"></nav>
+  <main>
+    <div class="hero">
+      <h2>怎么读</h2>
+      <p>六个阶段按顺序递进：先建立"工作流 vs 智能体"的判断框架，再吃透上下文与工具这两个核心机制，然后看四大平台（Claude Code / Codex / Pi / Hermes）的真实实践，接着进入长时运行、安全与评估的可靠性工程，最后从第一篇的引用网络走向更广的生态。每篇文章附约 1000–3000 字中文深度解读（点 📖 展开），外加 3 条要点与一句"为什么读"；点击标题或"▶"进入专注模式，逐篇推进。共 <b id="heroCount"></b> 篇，链接于 2026-09-29 逐条核对，深度解读完成于 2026-10-02。</p>
+      <div class="srcs">
+        <span class="srctag"><span class="dot" style="background:var(--anthropic)"></span>Anthropic — 工程博客系列（最系统）</span>
+        <span class="srctag"><span class="dot" style="background:var(--openai)"></span>OpenAI — 官方指南与产品发布</span>
+        <span class="srctag"><span class="dot" style="background:var(--pi)"></span>Pi — Mario Zechner 的极简 harness 路线</span>
+        <span class="srctag"><span class="dot" style="background:var(--nous)"></span>Nous Research — Hermes Agent 开源自托管路线</span>
+      </div>
+    </div>
+    <div id="list"></div>
+  </main>
+</div>
+
+<div class="focus" id="focus">
+  <div class="fwrap">
+    <div class="ftop">
+      <span class="fstep" id="fStep"></span>
+      <div class="fbar"><div id="fBar"></div></div>
+      <button class="fexit" id="fExit">退出 Esc</button>
+    </div>
+    <div id="fBody"></div>
+    <div class="fhint"><kbd>←</kbd> 上一篇 · <kbd>→</kbd> 下一篇 · <kbd>Enter</kbd> 标记已读并继续</div>
+  </div>
+</div>
+
+<script>
+/* ============ 策展数据（2026-09-29 用 Chromium 逐条核对） ============ */
+const SOURCES = {
+  anthropic: { name: "Anthropic", site: "www.anthropic.com" },
+  openai:    { name: "OpenAI",    site: "openai.com" },
+  pi:        { name: "Pi",        site: "mariozechner.at" },
+  nous:      { name: "Nous Research", site: "nousresearch.com" },
+  eco:       { name: "生态 · 框架", site: "—" },
+};
+
+const STAGES = [
+  { id: 1, title: "地基：理解 AI 工作流与智能体",
+    goal: "先把两个词分清——「工作流」是按预设流程编排 LLM，「智能体」是把过程决定权交给模型。这一阶段建立判断框架：什么任务该写死流程，什么任务值得放权，以及两家头部平台的官方方法论。",
+    arts: [1, 2, 3, 4] },
+  { id: 2, title: "核心机制：上下文、工具与执行环境",
+    goal: "递进的第二层：上下文是有限预算，工具是模型与世界的接口，执行环境决定能力上限。Anthropic 与 Pi 在这批文章里对 MCP、工具形态给出了几乎相反的答案——并读才能形成自己的判断。",
+    arts: [5, 6, 7, 8, 9, 10, 11, 12] },
+  { id: 3, title: "实战：四大平台的编程智能体",
+    goal: "看理念如何落地成产品与团队工作流：Claude Code 的最佳实践、Codex 的云端并行、AgentKit 的低代码路线、Pi 的极简内核、Hermes 的自托管长记忆，再到两篇多智能体编排的硬核复盘。",
+    arts: [13, 14, 15, 16, 17, 18, 19, 20, 21] },
+  { id: 4, title: "长时运行与可靠性：harness、安全与评估",
+    goal: "让工作流能过夜、能被信任：跨上下文窗口的接力设计、权限与沙箱的平衡、评估体系搭建，以及一次真实的故障复盘。这是从「能跑」到「敢用」的最后一层。",
+    arts: [22, 23, 24, 25, 26, 27, 28] },
+  { id: 5, title: "走出文章：延伸与动手",
+    goal: "读到这里可以合上文章了：技术报告作背景补充，然后把四个平台真正跑起来。",
+    arts: [29, 30] },
+];
+
+const ARTICLES = [
+  /* ---------- 阶段 1 ---------- */
+  { id: 1, src: "anthropic", title: "Building effective agents", zh: "构建高效智能体",
+    url: "https://www.anthropic.com/engineering/building-effective-agents", date: "2024-12-19", mins: 30, level: "入门",
+    points: [
+      "一句话分清两个概念：工作流是按开发者预定义的路径编排 LLM，智能体是让模型自主决定过程与工具使用",
+      "给出五种可组合的工作流模式：提示链、路由、并行化、编排者-执行者、评估者-优化者",
+      "核心主张：从最简单的方案开始，只有确实需要时才引入智能体；成功三要素是模型、工具与清晰的指令",
+      "官方时效横幅（2026 复核时在页）：文中工具生态自 2024 年 12 月起已变化，当前做法见 Managed Agents（第 24 篇）——概念框架本身未被推翻",
+    ],
+    why: "整个领域的开山之作，后面所有文章都在引用或反驳它" },
+  { id: 2, src: "openai", title: "A practical guide to building agents", zh: "构建智能体的实用指南（34 页 PDF）",
+    url: "https://cdn.openai.com/business-guides-and-resources/a-practical-guide-to-building-agents.pdf", date: "2025-04", mins: 45, level: "入门",
+    points: [
+      "OpenAI 面向企业的实操手册：什么样的任务适合交给智能体（需要判断、路径多变、容错可接受）",
+      "单智能体从零到可靠：模型、工具、指令三件套；多智能体用「手风琴式」扩张——先单后多、按需拆分",
+      "生产三道护栏：沙箱隔离执行、人工接管机制、系统级防护，全部配真实客户案例",
+    ],
+    why: "与第 1 篇并读，等于把两大平台的方法论一次对齐" },
+  { id: 3, src: "openai", title: "New tools for building agents", zh: "构建智能体的新工具",
+    url: "https://openai.com/index/new-tools-for-building-agents/", date: "2025-03-11", mins: 12, level: "入门",
+    points: [
+      "Responses API 成为新基座：网页搜索、文件搜索、计算机操作三种内置工具开箱即用",
+      "开源 Agents SDK：handoff 交接、guardrail 护栏、tracing 全链路追踪都成为标准件",
+      "平台思路清晰可见：把「编排」从提示词手艺变成平台功能",
+    ],
+    why: "理解 OpenAI 技术栈里搭工作流的原生零件，后面读 Codex / AgentKit 都靠它打底" },
+  { id: 4, src: "pi", title: "Prompts are code, .json/.md files are state", zh: "提示词即代码，文件即状态",
+    url: "https://mariozechner.at/posts/2025-06-02-prompts-are-code/", date: "2025-06-02", mins: 12, level: "入门",
+    points: [
+      "把提示词当代码：进版本库、可评审、可回滚，而不是散落在聊天窗口里",
+      "把 .json / .md 文件当智能体的持久状态：显式、可检查、可手工修复",
+      "工作流的可靠性来自「状态显式化」，而非把一切塞进上下文历史",
+    ],
+    why: "Pi 路线的思想起点，也是理解后面 CLAUDE.md、技能包等一切文件约定的钥匙" },
+
+  /* ---------- 阶段 2 ---------- */
+  { id: 5, src: "anthropic", title: "Effective context engineering for AI agents", zh: "面向智能体的上下文工程",
+    url: "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents", date: "2025-09-29", mins: 25, level: "进阶",
+    points: [
+      "上下文是有限资源：随历史膨胀，模型的「注意力预算」会被稀释，性能不增反降",
+      "三种管理手段各有适用场景：压缩历史、结构化笔记、子智能体分流",
+      "检索上「按需取用」优于一次全塞：先给索引，需要时再取全文",
+    ],
+    why: "长任务工作流的第一性难题，这一篇给全了 vocabulary 和工具箱" },
+  { id: 6, src: "anthropic", title: "The \"think\" tool", zh: "「think」工具：让模型停下来想",
+    url: "https://www.anthropic.com/engineering/claude-think-tool", date: "2025-03-20", mins: 12, level: "进阶",
+    points: [
+      "设计一个「什么都不做」的工具，让模型在多步工具调用之间停下来复盘已知信息",
+      "在工具结果之后插入思考位，能显著改善复杂工具链上的准确率与规则遵循",
+      "工作流设计的巧劲示范：有时提升性能只需要改变推理发生的「时机」",
+    ],
+    why: "短小精悍，演示了工作流里「思考位」的价值，适合当阶段二的调剂" },
+  { id: 7, src: "anthropic", title: "Writing effective tools for agents — with agents", zh: "用智能体写好智能体的工具",
+    url: "https://www.anthropic.com/engineering/writing-tools-for-agents", date: "2025-09-11", mins: 20, level: "进阶",
+    points: [
+      "工具描述是写给模型的 API 文档：命名、描述、参数与返回值的设计都有实证依据",
+      "用一个智能体评估并迭代另一个智能体的工具，形成半自动的工具优化循环",
+      "常见反模式：把多个动作塞进一个工具、返回过长的原始输出、缺少失败提示",
+    ],
+    why: "工具层是工作流的接口层，这篇是给「造工具的人」的方法论" },
+  { id: 8, src: "pi", title: "MCP vs CLI: Benchmarking Tools for Coding Agents", zh: "MCP 与 CLI 的工具基准对比",
+    url: "https://mariozechner.at/posts/2025-08-15-mcp-vs-cli/", date: "2025-08-15", mins: 18, level: "进阶",
+    points: [
+      "同一批任务上对比 MCP 工具与普通 CLI 命令的智能体表现，提供可复现的基准方法",
+      "结论反直觉：设计良好的 CLI 往往不输 MCP——关键在接口清晰度，不在协议形态",
+      "示范了如何系统性地评估「工具层」而不是凭叙事选型",
+    ],
+    why: "读完你会拥有做工具选型实验的能力，而不是站队" },
+  { id: 9, src: "pi", title: "What if you don't need MCP at all?", zh: "如果根本不需要 MCP 呢？",
+    url: "https://mariozechner.at/posts/2025-11-02-what-if-you-dont-need-mcp/", date: "2025-11-02", mins: 15, level: "进阶",
+    points: [
+      "主张：脚本加 shell 往往就是更简单、更好调试的集成层",
+      "从 token 开销、维护成本、调试体验三个维度拆解 MCP 的隐性成本",
+      "与 Anthropic 的 MCP 文章对读，能看到两种工作流哲学的正面交锋",
+    ],
+    why: "和第 8、10 篇连成一组辩论，是阶段二最有意思的思想碰撞" },
+  { id: 10, src: "anthropic", title: "Code execution with MCP: Building more efficient agents", zh: "用代码执行改造 MCP 智能体",
+    url: "https://www.anthropic.com/engineering/code-execution-with-mcp", date: "2025-11-04", mins: 15, level: "进阶",
+    points: [
+      "把 MCP 工具暴露为文件系统里的代码 API，让智能体写代码来调用工具",
+      "只加载用到的定义、中间结果留在文件系统，token 消耗大幅下降",
+      "「智能体写代码用工具」正在成为高阶工作流的共同形态",
+    ],
+    why: "Anthropic 对「MCP 太重」批评的工程回应，与 Pi 的文章对照着读" },
+  { id: 11, src: "anthropic", title: "Introducing advanced tool use on the Claude Developer Platform", zh: "Claude 平台的高级工具使用",
+    url: "https://www.anthropic.com/engineering/advanced-tool-use", date: "2025-11-24", mins: 15, level: "进阶",
+    points: [
+      "程序化工具调用：模型在代码里循环调用工具，一次推理完成多步操作",
+      "工具搜索与程序化定义：面对几十上百个工具时按需发现、按需加载",
+      "相当于把上一篇的理念做成了平台级能力",
+    ],
+    why: "工具规模从个位数涨到三位数之后，平台侧给出的规模化答案" },
+  { id: 12, src: "anthropic", title: "Equipping agents for the real world with Agent Skills", zh: "用技能（Skills）装备智能体",
+    url: "https://www.anthropic.com/engineering/equipping-agents-for-the-real-world-with-agent-skills", date: "2025-10-16", mins: 12, level: "进阶",
+    points: [
+      "把领域知识打包成「技能」文件夹：指令、脚本、资源按需挂载",
+      "渐进披露机制：先读元数据、需要时才展开全文，保护上下文预算",
+      "轻量的「能力包」标准：团队工作流可以沉淀成可共享的技能",
+    ],
+    why: "把团队经验变成可复用工作流组件的最轻路径" },
+
+  /* ---------- 阶段 3 ---------- */
+  { id: 13, src: "anthropic", title: "Claude Code: Best practices for agentic coding", zh: "Claude Code 智能体编程最佳实践",
+    url: "https://www.anthropic.com/engineering/claude-code-best-practices", date: "2025-04-18", mins: 20, level: "进阶",
+    points: [
+      "从 CLAUDE.md 到权限配置：把团队约定写成智能体读得懂的文件",
+      "探索-计划-编码-提交的工作节奏；用自定义斜杠命令固化团队工作流",
+      "headless 模式接入 GitHub Actions：把编码工作流搬进 CI",
+      "时效注（2026-10 复核）：页面已改版为持续维护的文档形式（新增并行会话、验证工作等章节），比一般发布文抗老化",
+    ],
+    why: "最广为流传的实操清单，今天读依然基本成立" },
+  { id: 14, src: "openai", title: "Introducing Codex", zh: "Codex 发布：云端软件工程智能体",
+    url: "https://openai.com/index/introducing-codex/", date: "2025-05-16", mins: 10, level: "进阶",
+    points: [
+      "云端并行：每个任务一个隔离容器，可读代码库、可跑测试，多任务同时推进",
+      "「沙箱里有真实工程环境」是这类工作流的物理基础",
+      "页面顶部注明发布文已过时并指向新文档——正好当作产品演化史的观察点",
+    ],
+    why: "与 Claude Code 的本地终端路线对照，看清两种工作流形态" },
+  { id: 15, src: "openai", title: "Introducing AgentKit", zh: "AgentKit 发布：从原型到生产",
+    url: "https://openai.com/index/introducing-agentkit/", date: "2025-10-06", mins: 12, level: "进阶",
+    points: [
+      "Agent Builder 可视化搭工作流，ChatKit 嵌入对话，Evals 评估，Connector Registry 统一管理数据连接",
+      "强调完整生产链路：版本控制、评估、发布一体化，不再拼凑零散工具",
+      "与 Agent Skills / MCP 路线对照：低代码画布 vs 代码优先，两条路线的分歧点",
+    ],
+    why: "看懂 OpenAI 在智能体平台层的完整拼图" },
+  { id: 16, src: "pi", title: "What I learned building an opinionated and minimal coding agent", zh: "造一个极简编程智能体学到的事",
+    url: "https://mariozechner.at/posts/2025-11-30-pi-coding-agent/", date: "2025-11-30", mins: 25, level: "进阶",
+    points: [
+      "Pi 的设计哲学：最小内核，不内置 MCP、子智能体、计划模式，一切交给扩展组装",
+      "把智能体做成「库」而不是「产品」，让使用者搭建自己的工作流",
+      "以 Claude Code 重度用户视角复盘各家 harness 的取舍，第一手对比材料",
+    ],
+    why: "Pi 路线的宣言书，也是理解「为什么有人要放弃 Claude Code」的答案" },
+  { id: 17, src: "pi", title: "Armin is wrong and here's why", zh: "Armin 错了：harness 设计之争",
+    url: "https://mariozechner.at/posts/2025-11-22-armin-is-wrong/", date: "2025-11-22", mins: 12, level: "深入",
+    points: [
+      "逐条回应 Armin Ronacher「LLM API 本质是状态同步问题」的论点",
+      "涉及前缀缓存、消息抽象、本地优先/CRDT 等 harness 底层设计问题",
+      "本质是一场「工作流的状态该归谁管」的公开思想交锋",
+    ],
+    why: "读懂这场争论，你对 harness 层的理解会超过大多数人" },
+  { id: 18, src: "nous", title: "Hermes Agent — The agent that grows with you", zh: "Hermes Agent 官网：会成长的自我托管智能体",
+    url: "https://hermes-agent.nousresearch.com/", date: "持续更新", mins: 15, level: "进阶",
+    points: [
+      "开源（MIT）、自托管：一个常驻服务器的智能体，持久记忆、越用越强",
+      "六大特性：全平台连接（Telegram/Discord/Slack…）、持久记忆、自然语言定时任务、子智能体委派、联网多模态、五种沙箱后端",
+      "配套文档（/docs）覆盖安装、技能自生成与社区真实用例",
+    ],
+    why: "「个人长时智能体」这条路线目前最完整的开源实现" },
+  { id: 19, src: "nous", title: "Refactoring Hermes with 1,393 agents", zh: "1393 个智能体重构 Hermes",
+    url: "https://nousresearch.com/refactoring-hermes-with-1393-agents", date: "2026-09-15", mins: 15, level: "深入",
+    points: [
+      "Hermes Agent 自主完成约百万行 Python 的清理重构：19 小时跑出 1393 个子智能体",
+      "一笔成本账：用约 $19K 的 token 换来 $1.8M 量级的工程价值",
+      "记录了把大重构拆分给子智能体的编排方式与踩坑过程",
+    ],
+    why: "大规模无人值守工作流目前最生动的第一手报告" },
+  { id: 20, src: "anthropic", title: "How we built our multi-agent research system", zh: "我们如何构建多智能体研究系统",
+    url: "https://www.anthropic.com/engineering/multi-agent-research-system", date: "2025-06-13", mins: 30, level: "深入",
+    points: [
+      "编排者-工人架构：主智能体拆任务、并行子智能体搜索、统一合成引用",
+      "性能提升的大头来自工程细节：提示词、并行度、任务描述与上下文交接规则",
+      "量化事实：多智能体比单轮消耗约 15 倍 token——什么时候值得用，讲得很诚实",
+    ],
+    why: "多智能体系统最完整的一篇公开复盘，所有后续文章的参照系" },
+  { id: 21, src: "anthropic", title: "Building a C compiler with a team of parallel Claudes", zh: "用并行 Claude 团队写一个 C 编译器",
+    url: "https://www.anthropic.com/engineering/building-c-compiler", date: "2026-02-05", mins: 20, level: "深入",
+    points: [
+      "「agent teams」：给一组并行运行的 Claude 划分编译器模块，人类只在关键节点介入",
+      "团队拓扑、接口约定与集成节奏决定产出质量，俨然真实工程组织",
+      "一篇「多智能体软件开发」的实验报告，像是未来工作方式的预演",
+    ],
+    why: "把阶段二、三的所有概念揉进一个大型实验里" },
+
+  /* ---------- 阶段 4 ---------- */
+  { id: 22, src: "anthropic", title: "Effective harnesses for long-running agents", zh: "长时运行智能体的 harness 设计",
+    url: "https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents", date: "2025-11-26", mins: 25, level: "深入",
+    points: [
+      "核心难题：智能体跨多个上下文窗口接力工作，每个新会话都「失忆」",
+      "用人类换班作类比：初值笔记、开场清单、检查点三类交接机制",
+      "harness 是模型能力之外的第二杠杆——同样的模型，不同的 harness，结果天差地别",
+    ],
+    why: "长时工作流的奠基篇，后面三篇都是它的展开" },
+  { id: 23, src: "anthropic", title: "Harness design for long-running application development", zh: "长时应用开发的 harness 设计",
+    url: "https://www.anthropic.com/engineering/harness-design-long-running-apps", date: "2026-03-24", mins: 30, level: "深入",
+    points: [
+      "两条工程线交织：前端设计技能 + 长时自主编码 harness",
+      "用提示词与 harness 设计把模型的长程表现推到远高于基线",
+      "展示了「模型不变、harness 变、结果大不同」的系统实验方法",
+    ],
+    why: "读完你可以上手对自己的工作流做 harness 调优" },
+  { id: 24, src: "anthropic", title: "Scaling Managed Agents: Decoupling the brain from the hands", zh: "托管智能体的规模化：解耦大脑与双手",
+    url: "https://www.anthropic.com/engineering/managed-agents", date: "2026-04-08", mins: 20, level: "深入",
+    points: [
+      "harness 编码了对模型能力边界的假设，而这些假设会随模型进步而过时",
+      "托管智能体服务用稳定接口把「大脑」（模型）与「双手」（执行环境）解耦",
+      "回答长期架构问题：模型一直在变，工作流怎么才能不返工",
+    ],
+    why: "为会长期演进的智能体系统做架构决策时的必读",
+    links: [
+      { name: "Managed Agents 官方文档（beta）", url: "https://platform.claude.com/docs/en/managed-agents/overview" },
+    ] },
+  { id: 25, src: "anthropic", title: "Beyond permission prompts: making Claude Code more secure and autonomous", zh: "超越权限弹窗：沙箱化",
+    url: "https://www.anthropic.com/engineering/claude-code-sandboxing", date: "2025-10-20", mins: 20, level: "深入",
+    points: [
+      "从「每步问人」转向「先隔离再放权」：内置沙箱让智能体安全地自主运行",
+      "文件系统与网络隔离的具体实现细节",
+      "自治与安全的平衡：放权的前提是爆炸半径可控",
+    ],
+    why: "与下一篇构成 Claude Code 权限演进的上、下集" },
+  { id: 26, src: "anthropic", title: "How we built Claude Code auto mode", zh: "Claude Code 自动模式的权限设计",
+    url: "https://www.anthropic.com/engineering/claude-code-auto-mode", date: "2026-03-25", mins: 25, level: "深入",
+    points: [
+      "用户对权限弹窗的批准率高达 93%——「批准疲劳」反而在伤害安全",
+      "用分类器自动决策一部分权限请求：减少打断的同时守住红线",
+      "讲清楚「哪些能自动、哪些必须人审」的边界设计",
+    ],
+    why: "人机协同工作流里最微妙的权限问题，被正面拆解" },
+  { id: 27, src: "anthropic", title: "Demystifying evals for AI agents", zh: "破解智能体评估",
+    url: "https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents", date: "2026-01-09", mins: 30, level: "深入",
+    points: [
+      "智能体的多轮、有状态、非确定性让传统单点测试失效",
+      "自定义评估器、轨迹评估、生产观测三层组合，与被测系统的复杂度匹配",
+      "评估的价值随生命周期复利：从此改提示词不再靠感觉",
+    ],
+    why: "想给工作流配上可靠的度量系统，从这里开始" },
+  { id: 28, src: "anthropic", title: "A postmortem of three recent issues", zh: "三起故障的事后复盘",
+    url: "https://www.anthropic.com/engineering/a-postmortem-of-three-recent-issues", date: "2025-09-17", mins: 20, level: "深入",
+    points: [
+      "三起平台侧故障的透明复盘：影响范围、根因、修复与预防",
+      "暴露的系统性问题：变更管理中的隔离与灰度策略缺口",
+      "提醒：工作流设计必须把「平台不可靠」当作默认前提",
+    ],
+    why: "收尾读它正好：对基础设施保持敬畏，是可靠性的起点" },
+
+  /* ---------- 阶段 5 ---------- */
+  { id: 29, src: "nous", title: "Hermes 4 Technical Report", zh: "Hermes 4 技术报告（PDF）",
+    url: "https://nousresearch.com/wp-content/uploads/2025/08/Hermes_4_Technical_Report.pdf", date: "2025-08", mins: 60, level: "延伸",
+    points: [
+      "Hermes 4 系列混合推理模型的技术报告，开源权重路线的代表",
+      "「可引导性」（steerability）的设计主张：模型更贴合使用者的价值观",
+      "作为前面 Hermes Agent 各篇的幕后模型背景资料，选读",
+    ],
+    why: "想深挖 Hermes 平台时的技术底稿" },
+  { id: 30, src: "pi", title: "动手环节：把平台跑起来", zh: "从读者到用户",
+    url: "https://github.com/earendil-works/pi", date: "—", mins: 0, level: "延伸",
+    lab: true,
+    points: [
+      "Pi：极简智能体工具包，`pip`/二进制即用，适合魔改成自己的工作流",
+      "Hermes Agent：一条安装脚本部署到自己的服务器或 VPS，接入 Telegram 试试长记忆",
+      "建议给自己出一道题：用其中任意平台，把本周的一项重复劳动做成自动化工作流",
+    ],
+    why: "文章读得再多，不如真跑一个 agent 一晚上",
+    links: [
+      { name: "Pi 仓库 (GitHub)", url: "https://github.com/earendil-works/pi" },
+      { name: "Hermes Agent 仓库", url: "https://github.com/nousresearch/hermes-agent" },
+      { name: "Hermes Agent 文档", url: "https://hermes-agent.nousresearch.com/docs/" },
+    ] },
+];
+
+/*DEPTH-INJECT-START*/
+window.__DEPTH = {"1":"<h4>它在回应什么问题<\/h4><p>2024 年底，agent 概念被炒得火热，开发者面对众多框架与术语难辨方向。Anthropic 基于与数十个跨行业团队合作的经验写成这篇公认的奠基之作，回答三个问题：什么是智能体、何时该用以及何时不该用、如何从简到繁搭建系统。全文立场可浓缩为一个判断：最成功的实现靠的是<em>简单、可组合的模式<\/em>，而非复杂框架。<\/p><h4>核心内容拆解<\/h4><p>文章先划清概念：workflows 与 agents 同属 agentic systems，但架构迥异——前者的 LLM 与工具沿预定义代码路径被编排，后者由 LLM 动态决定自己的流程与工具使用。随后是一条递进谱系：基础构件为 augmented LLM，即以检索、工具、记忆增强的 LLM；其上叠加五种工作流——prompt chaining（任务分步串联，中间可插程序化检查的门）、routing（先分类再分流到专用提示）、parallelization（切分子任务并行或同题投票）、orchestrator-workers（中央 LLM 动态拆解、委派并汇总）、evaluator-optimizer（生成与评审循环打磨）；最后才是自主 agent——本质只是 LLM 在循环中依据环境反馈使用工具，每一步从环境获取 ground truth 来评估进度。<\/p><ul><li>选择依据：任务能干净分解选 chaining；输入类别清晰选 routing；需要多视角或提速选 parallelization；子任务不可预知选 orchestrator-workers——它与 parallelization 拓扑相似，关键差异是子任务不预先定义，而由编排者按具体输入动态决定；有明确评价标准且反馈能带来可度量改进选 evaluator-optimizer；开放式、步数无法预知才用 agent。<\/li><li>三条核心原则：保持设计简单；显式展示规划步骤以保透明；精心打造 agent-computer interface（ACI）。<\/li><\/ul><h4>关键细节与数据<\/h4><p>两条附录最容易被忽视却最实用。附录一指出客服与编码是最有价值的落地场景：客服天然是对话流加工具动作，已有厂商采用只按成功解决计费的收费模式；编码则因测试可自动验证、反馈闭环清晰，其智能体已能仅凭 PR 描述解决 SWE-bench Verified 中的真实 GitHub issue，但人工评审对齐系统整体需求仍不可替代。附录二讨论工具本身的提示工程：同一动作可有多种格式定义，难度却天差地别——写 diff 要预先数行号，在 JSON 里写代码需转义换行与引号；作者透露构建 SWE-bench 智能体时，花在优化工具上的时间超过整体提示词，一个经典修正是把相对路径改为强制绝对路径，模型随即不再出错。文章建议像投入 HCI 一样投入 ACI，并为工具做防呆（poka-yoke）设计。<\/p><h4>与清单其他文章的呼应<\/h4><p>文中线索几乎都能在清单中找到专文：Model Context Protocol 对应 32 号（MCP 发布文）；Claude Agent SDK 对应 35 号（Agent SDK 总览）；Strands、Rivet、Vellum 三个框架正是 36 号（框架速览）的主角；示例实现可对照 31 号（五模式 cookbook 代码）；工具设计思想在 7 号（为智能体写工具）中大幅展开；SWE-bench 实验细节见 34 号。本阅读器版本已将原文超链接解析为清单 31 至 36 号条目。后续 17 号（Armin 之争）、9 号（也许不需要 MCP）等争论文章，也都以本文的简单优先立场为共同参照系。<\/p><h4>实践启示<\/h4><p>先问最简单的方案能否解决：许多应用只需优化单次 LLM 调用加检索与上下文示例；routing 还能按难度分配模型，把常见简单问题交给更小更便宜的模型、疑难问题才升级到更强的模型，以优化整体性能与成本。只有当复杂度能可度量地改善结果时才升级。框架可加速起步，但要能读懂其底层代码，对底层机制的错误假设是常见故障源。智能体应在沙箱中充分测试并配备护栏，并设置最大迭代次数等停止条件。把工具文档当作写给初级工程师的说明来打磨，再真实观察模型的误用方式并持续迭代。<\/p><h4>局限与时效<\/h4><p>页面顶部有官方横幅：文中描述的工具生态自 2024 年 12 月起已发生变化，当前做法参见 Managed Agents（清单 24 号）；正文路由示例中的 Claude Haiku 4.5、Sonnet 4.5 等模型名也是后来更新过的痕迹。模式分类学至今仍然成立，但具体载体已大幅演进：MCP 生态经 8 号（MCP vs CLI 基准）、9 号、10 号（代码执行改造 MCP）的多轮反思，远超当年用一个简单客户端接入第三方工具的设想；12 号 Agent Skills、25 号 Claude Code 沙箱化、26 号 auto mode 权限等也在重写增强型 LLM 的实现方式。到 2026 年 10 月阅读本文，应读其模式与判断，而非具体工具与模型。<\/p>","2":"<h4>它在回应什么问题<\/h4><p>这份官方 PDF 指南面向第一次构建智能体的产品与工程团队，把大量客户部署经验提炼为可执行的最佳实践：如何判断一个工作流值不值得用智能体改造、最小可行架构由什么组成、什么时候才需要拆成多个智能体、以及如何在生产环境中安全可预期地运行。它与 3 号发布文互为表里：一个给产品积木，一个给方法论。<\/p><h4>核心内容拆解<\/h4><p>定义先行：智能体是能独立代表用户完成任务的系统；只集成 LLM 却不让它控制工作流执行的聊天机器人、单轮调用与分类器都不算。何时不该用：适用判据有三——复杂决策（如客服退款审批）、规则集膨胀到难以维护、重度依赖非结构化数据（如处理家财险理赔）；用例若不满足，确定性方案可能就够。<\/p><p>单智能体三件套为 model、tools、instructions。模型选型建议先用最强模型建立性能基线，再逐个换成更小的模型压缩成本与延迟；工具分三类——Data 取上下文（查库、读 PDF、搜网）、Action 执行动作（发消息、更新记录、转人工）、Orchestration 即智能体本身可作其他智能体的工具；指令编写四原则：复用既有 SOP 与知识库文档、把稠密资源拆成更小更清晰的步骤、让每步对应明确的动作或输出、预判边缘情况并写好条件分支。甚至可用 o1 或 o3-mini 从既有帮助中心文档自动生成指令。<\/p><p>编排上主张先榨干单智能体：以 run 循环跑到退出条件（调用最终输出工具，或不再发起工具调用），用带策略变量的 prompt 模板承接新场景；当指令复杂到难以维护或工具过载时才拆分——文中给出的经验区间是：15 个以上定义清晰、彼此区隔的工具可以管好，不到 10 个高度重叠的工具就可能失控。多智能体呈手风琴式两种形态：Manager 模式把专用智能体折叠成工具，由中央管理者调用并汇总；Decentralized 模式则通过对等 handoff 把控制权连同对话状态一并移交。<\/p><h4>关键细节与数据<\/h4><p>护栏是分量最重的一章，组合策略分三类：基于 LLM 的护栏、基于规则的护栏（正则、黑名单、输入长度限制）与 OpenAI moderation API，共同构成分层防御。具体清单包括相关性分类器、安全分类器（防越狱与提示注入）、PII 过滤、moderation、工具风险分级（按只读或写入、可逆性、所需权限与资金影响评为高中低三档，高风险动作触发事前检查或升级人工）、输出校验。Agents SDK 把护栏当作一等公民，默认乐观执行：主智能体先行生成，护栏并发运行，越界即抛异常。人为干预设两个触发器——超过失败阈值、执行敏感或不可逆的高风险动作（如取消订单、大额退款、支付）。支付欺诈甄别的比喻很传神：规则引擎像清单，LLM 智能体像经验丰富的调查员。<\/p><h4>与清单其他文章的呼应<\/h4><p>Manager 与 Decentralized 两模式在 31 号（五模式 cookbook 代码）有对应实现，与 1 号的 orchestrator-workers 谱系互补；工具风险分级与人为干预，后来在 26 号（auto mode 权限）与 25 号（Claude Code 沙箱化）中演化为完整的权限与隔离体系；护栏为何不可省，28 号（三起事故复盘）提供了反面教材；对声明式图框架的批评——要学专用 DSL、图越复杂越难维护——可与 36 号（框架速览）的 GUI 工具对读；Agents SDK 产品全貌见 3 号与 35 号。<\/p><h4>实践启示<\/h4><p>把最大化单智能体能力当作默认纪律，拆分的信号是指令失守或选错工具，而非功能清单变长。护栏是渐进工程：先聚焦数据隐私与内容安全，再按真实运行暴露的边缘案例逐层加码，并同步兼顾安全与用户体验。人类接管通道要在部署早期就设计好，把升级人工当作产品能力而非失败。模型策略上先建评估基线再谈降本，避免过早用小模型封死系统的能力上限。<\/p><h4>局限与时效<\/h4><p>文中示例模型（gpt-4o-mini、o1、o3-mini）与初代 Agents SDK 代码均已迭代，本转文本还存在表格错位与代码乱序，关键片段应对照原版 PDF 阅读。到 2026 年 10 月回看，其上的产品层几经反复——AgentKit（15 号）上线后又宣布关停 Agent Builder——但 code-first 优于声明式图的判断反而被关停决定印证。方法论主干（三件套、run 循环、分层护栏、人工干预触发器）至今仍是 OpenAI 官方立场的底稿；具体 API 用法以现行文档为准。<\/p>","3":"<h4>它在回应什么问题<\/h4><p>2025 年 3 月 11 日，OpenAI 对开发者的核心抱怨作出回应：模型能力已因推理、多模态与安全技术的进展而到位，但把它变成生产级智能体仍然太难——需要反复打磨提示词、自写编排逻辑，还缺乏可观测性与内置支持。这篇发布文交出第一批官方积木：Responses API、内置工具、开源 Agents SDK 与集成可观测性，把用 OpenAI 造智能体从拼装多套 API 变成一站式。<\/p><h4>核心内容拆解<\/h4><p>Responses API 被定位为新的 API 原语：兼具 Chat Completions 的简洁与 Assistants API 的工具能力，是前者的超集；单次调用即可串联多工具与多轮模型调用，统一基于 item 的设计、直观的流式事件与 <code>response.output_text<\/code> 之类的 SDK 助手降低了使用成本。API 发布当天即向所有开发者开放且不单独收费，token 与工具按标准费率计账；官方同时承诺默认不用业务数据训练模型，存于 OpenAI 的数据可用于追踪与评估。Chat Completions 作为采用最广的 API 会继续获得新模型支持，而官方明确新集成首选 Responses API；Assistants API 在功能对齐后将正式宣布弃用，目标日落时间定在 2026 年年中。<\/p><p>三个内置工具把平台能力直接灌进模型：web search 提供带内联引用的实时答案；file search 支持多文件类型、查询优化、元数据过滤与自定义重排序，几行代码即可搭起 RAG，向量存储对象还新增了独立搜索端点，可直接查询自有数据供其他应用复用；computer use 由驱动 Operator 的 CUA 模型提供动力，把模型生成的鼠标键盘动作翻译成环境中的可执行命令。Agents SDK 则是开源编排层，吸取实验项目 Swarm 的经验，四件套为 Agents、Handoffs、Guardrails 与 Tracing 可观测性；它同时兼容提供 Chat Completions 风格端点的其他提供商模型，首发 Python，Node.js 随后。官方列举的适用场景包括客服自动化、多步研究、内容生成、代码评审与销售线索挖掘，设计上还借鉴了 Pydantic、Griffe 与 MkDocs 等社区成果。<\/p><h4>关键细节与数据<\/h4><ul><li>CUA 基准：OSWorld 38.1%（此前 SOTA 为 22.0%）、WebArena 58.1%、WebVoyager 87.0%；官方坦承 OSWorld 的成绩说明该模型在操作系统级自动化上尚不够可靠，建议人工监督。<\/li><li>定价：web search 每千次查询 30 与 25 美元（4o 与 4o-mini 搜索模型档）；file search 每千次查询 2.50 美元、存储每天每 GB 0.10 美元且首 GB 免费；computer use 输入与输出每百万 token 分别 3 与 12 美元，仅向 3 至 5 级开发者开放研究预览。<\/li><li>安全工程：在将 Operator 的 CUA 能力开放到 API 前，OpenAI 补充了针对提示注入的安全检查、敏感任务的确认提示、环境隔离工具与策略违规检测，并更新了系统卡；但仍明示非浏览器环境下易出错，需人工监督。<\/li><li>客户样本：Hebbia 以 web search 做金融与法律研究；Navan 用 file search 做差旅政策问答；Luminai 用 computer use 在数天内完成传统 RPA 数月未能自动化的流程；Coinbase 在数小时内于 Agents SDK 上搭出加密钱包智能体套件 AgentKit；Box 数天内做出打通企业数据与公网搜索的智能体。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>2 号（OpenAI 实用指南 PDF）正是这套工具的方法论说明书；35 号（Agent SDK 总览）梳理其后续演化；内置工具代表的平台替你造工具路线，可与 Anthropic 阵营的 11 号（高级工具使用平台能力）对读；Tracing 与评估能力直接通向 27 号（智能体评估）的主题。一个有趣的伏笔：Coinbase 的产品恰好也叫 AgentKit，与 15 号（AgentKit 发布）重名却毫无关联。文末关于智能体将很快成为劳动力一部分的判断，则是后来 ChatGPT 系产品化路线的序章。<\/p><h4>实践启示<\/h4><p>内置工具的价值在免运维：搜索、检索、操作计算机这些脏活由平台承担，团队得以聚焦业务编排与评估。选 API 本质是选迁移路径，文中的超集承诺与迁移指南承诺值得写进选型文档；同时它把数据存于 OpenAI 以便追踪与评估、且默认不用业务数据训练模型的设定，也应纳入数据治理考量。Guardrails 与 Tracing 应从第一天进入原型，而不是上线前补课。<\/p><h4>局限与时效<\/h4><p>本文写于 2025 年 3 月，所有基准与价格都已是历史快照：Assistants API 的 2026 年年中日落目标距今已到期，实际进度需查官方文档；CUA 的各项成绩也仅代表发布时点。产品层同样几经反复——Responses API 之上长出过 AgentKit（15 号）的 Agent Builder，又在 2026 年宣布关停、回归 Agents SDK——这说明 API 层比产品层稳定，选型时押注底层原语更安全。引用文中任何定价前，务必核对当前定价页。<\/p>","4":"<h4>它在回应什么问题<\/h4><p>2025 年年中，用 Claude Code 这类智能体写一次性脚本体验很好，但放到大型既有代码库上就处处碰壁。Mario Zechner 把痛点拆成四层：上下文缺失；模型跟不上执行流，多进程、IPC、并发场景尤甚；缺乏品味，倾向堆砌过度设计的“最佳实践”；以及约 100k token 后的上下文退化，重要细节被淹没在中段。更麻烦的是多数工具不让你控制上下文内容：Cursor 这类中间商有压缩上下文省钱的动机，Claude Code 没有中间盘剥，但系统提示词不可改、指令被悄悄注入、工具定义照样占用空间。文章要回答的是：程序员能否用工程方法驯服这种混乱？<\/p><h4>核心主张：把 LLM 当一台“破通用计算机”来编程<\/h4><p>作者提出一个刻意粗糙的比喻：LLM 是一台用自然语言编程、极慢且不可靠的通用计算机。这是一种元编程——提示词是“代码”，在 LLM 上执行后产出真正跑在 CPU 上的代码。在传统软件里我们习惯用精确语言编码规格，面对自然语言的模糊性反而忘了套用同一套结构化思维，这个框架正是要弥合这道缝。概念映射如下：<strong>程序<\/strong>即提示词，规定初始输入、经工具描述“导入”函数库、用顺序、循环、条件实现控制流，工具调用与用户输入是 I/O；<strong>输入<\/strong>来自预置资料（架构概览、风格指南）、执行中的用户澄清与工具输出；<strong>状态<\/strong>不能依赖上下文（压缩终会清空它），而要序列化到磁盘——结构化数据用 JSON 配合 jq 精确读写，小型非结构化数据用 Markdown，收益是随时可用全新上下文恢复执行，绕开压缩难题；<strong>输出<\/strong>不只是代码，还包括 diff、在编辑器中打开的文件、统计与总结，供人审查并作为下一步输入。这套框架的真正作用，是把“跟 AI 聊天”的心态切换成“输入、状态、输出”的工程心态。<\/p><h4>关键细节与数据：Spine 多语言移植“程序”<\/h4><p>实战对象是 Spine 2D 骨骼动画软件的多语言运行时，覆盖 C、C++、C#、Haxe、Java、Dart、Swift、TypeScript 等。4.2 到 4.3-beta 之间，Java 参考实现改了 79 个文件、4820 行插入、4679 行删除，历来靠人肉逐语言移植。转译器帮不上忙——移植必须保持各语言地道的写法而非机械翻译；约 99% 的类型在所有运行时之间一一对应，这种结构一致性正是自动化的前提。分工同样明确：把 Java 泛型翻译成 C++ 模板这类事模型不擅长，留在人手上，它真正擅长的是逐行核对移植的忠实性。作者把人工流程编码成 port.md：porting-plan.json 兼任初始输入与持久状态，逐类型记录 portingState（pending/done）与候选文件，跨会话可续作；generate-porting-plan.js 秒级预生成计划，换来确定性（同样输入得到同样计划）、上下文效率与速度，把开放式探索变成查表问题；工作流内置多个人类检查点，每个类型移植前后都要停下等确认，diff 在 VS Code 打开供审；jq 查询相当于预写好的函数库，避免模型自造低效命令；“Read the ENTIRE file”式的硬指令防止模型只读文件片段。结果：原本 2-3 周的移植工作压缩到 2-3 天。模型仍无法独立吃下复杂类型层级，但机械部分被自动化，人只保留真正需要判断力的决策。<\/p><h4>与清单其他文章的呼应<\/h4><p>这是 5《上下文工程》的个人实践版：只放任务所需信息、最小化轮次，与 Anthropic 的主张同构；它对 Claude Code 的用法又与 13《Claude Code 最佳实践》互补——后者讲 CLAUDE.md 与权限流，前者把整个工作流写成可重放的“程序”。用 README 组织脚本的思路日后演化为 12《Agent Skills》的渐进披露，而“程序+状态文件”的方法论在 16《造 Pi 学到的事》里被推向极简主义的结论。<\/p><h4>实践启示<\/h4><ul><li>凡能用脚本确定性预生成的数据（diff、依赖序、类型信息），别让模型现场探索，把开放式问题转成结构化数据处理。<\/li><li>会话状态落盘为 JSON 或 Markdown，天然获得断点续作与可审查性，比依赖 harness 的上下文压缩可靠。<\/li><li>在提示词里写防御性编程：明确禁止不该做的事，例如对其他语言不要尝试单文件编译。<\/li><\/ul><h4>局限与时效<\/h4><p>作者自承这“不是万灵药”，且文中不少断言（如 100k token 退化、Cursor 压缩上下文的动机论）是体感与推断。到 2026 年 10 月回看：新一代模型的长上下文与执行流能力确有提升，但中段遗忘与品味问题并未根除；Agent Skills 已把 README 加渐进披露标准化，各 harness 也陆续开放系统提示词与可观测性，文中抱怨的锁定问题部分缓解。经受住时间检验的，是“预生成计划+状态文件+人类检查点”这套骨架——它成为 Pi 系列方法论的起点。<\/p>","5":"<h4>它在回应什么问题<\/h4><p>2025 年 9 月底，Anthropic 把讨论从提示词工程推进到上下文工程：当智能体在多轮推理与更长的时间尺度上运行，工程重心已不是“怎样写好一段提示”，而是“每一次推理时，什么样的上下文配置最可能产生想要的行为”。文章要回应的硬问题是：上下文窗口有限、模型对长上下文的利用质量会衰减，如何让智能体在数十分钟到数小时的任务里保持连贯与可靠。<\/p><h4>核心内容拆解<\/h4><ul><li><strong>注意力预算与 context rot<\/strong>：needle-in-a-haystack 类研究揭示，随着窗口内 token 增多，模型精确召回的能力下降。Transformer 中每个 token 都要与所有 token 建立成对注意力，n 个 token 意味着 n² 关系，长度一长注意力被摊薄；位置编码插值能外推更长序列但伴随退化。结论是：把上下文当作边际收益递减的稀缺资源，设计目标是“找到最小的、信号密度最高的 token 集合”。<\/li><li><strong>有效上下文的解剖<\/strong>：系统提示要落在“正确的高度”——一端是脆弱的硬编码 if-else，另一端是过度泛化、假装共享上下文的指导；工具集要克制，如果人类工程师都说不清该用哪个工具，就不能指望智能体做得更好；少样本示例要选多样化、典范性的，而不是罗列边角案例的清单。<\/li><li><strong>即时检索（just-in-time）<\/strong>：与其预先把数据嵌入索引，不如让智能体持有文件路径、存储的查询、链接等轻量标识符，运行时按需加载。Claude Code 用 head、tail 与定向查询分析大数据库而从不载入全量数据；CLAUDE.md 常驻、glob/grep 按需取用的混合策略是典型范式，作者认为这种 upfront 加按需的组合尤其适合法律、金融这类内容较少变动的领域。文件夹层级、命名、时间戳本身也是信号——同名文件放在 tests 还是 src/core_logic 下含义不同。<\/li><li><strong>长时程三板斧<\/strong>：压缩（compaction）在临近上限时总结历史、重启窗口，保留架构决策与未解决 bug、丢弃冗余工具输出；结构化笔记把状态持久化到窗口外的 NOTES.md 与待办清单；子智能体架构让探索消耗的数万 token 留在隔离窗口，主智能体只收 1,000–2,000 token 的蒸馏摘要。<\/li><\/ul><h4>关键细节与数据<\/h4><ul><li>压缩的调优路径：先最大化召回率确保不漏关键信息，再迭代提升精确率；最轻量的形式是工具结果清除，已在 Claude Developer Platform 上线；Claude Code 压缩后保留最近访问的五个文件。作者同时打消了“等更大的窗口”的幻想：至少在追求最强表现的场景，上下文污染与信息相关性问题会在可预见的未来长期存在。<\/li><li>结构化笔记的极端案例是 Claude 玩 Pokémon：无需任何记忆结构的提示，智能体自己维护“过去 1,234 步在 1 号道路训练、皮卡丘升了 8 级、目标 10 级”这类精确计数，上下文重置后读自己的笔记续跑数小时任务。伴随 Sonnet 4.5 发布，平台推出文件式记忆工具公测。<\/li><li>三种技术的选择建议：大量来回对话用压缩，有清晰里程碑的迭代开发用笔记，可并行探索的研究分析用多智能体。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>本文是清单 1〈Building effective agents〉的直接续篇：沿用了那边工作流与智能体的区分，并把智能体定义为 “LLMs autonomously using tools in a loop”；工具设计原则由清单 7〈为智能体写工具〉展开；子智能体隔离上下文的模式在清单 20〈多智能体研究系统〉有完整实证；文中提出的渐进披露随后被清单 12〈Agent Skills〉制度化为文件格式。<\/p><h4>实践启示<\/h4><p>把“最小高信号 token 集合”当作一切组件的设计准则：系统提示从最小版本起步、按失败模式增补；工具宁缺毋滥；先想清楚什么信息必须跨轮存活，再决定用压缩、笔记还是子智能体承载。同时保留文中的清醒权衡：运行时探索比预取慢，缺少合适工具与启发式引导的智能体会浪费上下文、钻进死胡同；作者给出的总建议是 “do the simplest thing that works”。<\/p><h4>局限与时效<\/h4><p>到 2026 年 10 月回看：窗口更大、模型更聪明，文中“更聪明的模型需要更少的规定性工程”的预判已成为普遍经验，但 context rot 并未消失，压缩、记忆、子智能体已从技巧沉淀为各平台的标配能力；工具结果清除与记忆工具已从发布时的公测状态成为平台常规能力；渐进披露被 Agent Skills 固化为标准。本文如今的价值不在具体操作，而在心智模型——把上下文当稀缺资产管理，这一原则至今仍是长任务智能体的第一性原理。<\/p>","6":"<h4>它在回应什么问题<\/h4><p>2025 年 3 月 20 日，Anthropic 发布了一个近乎行为艺术式的工具：think 工具不获取任何新信息、不改动环境，唯一的功能是把模型的一段思考追加到日志里。它回应的问题是：在不训练模型、几乎零工程开销的前提下，能否改善智能体在长链条工具调用中的表现——尤其是遵循政策、收齐信息再行动、多步顺序决策这些最容易出错的场景。<\/p><h4>核心内容拆解<\/h4><ul><li><strong>它是什么、不是什么<\/strong>：think 工具给模型一个在工具调用间隙“停下来想一想”的指定空间——收到工具结果后、采取行动前，先列出适用规则、核对所需信息是否齐全、验证计划是否合规。它与扩展思考（extended thinking）是两回事：扩展思考发生在模型开始生成响应之前，think 工具发生在生成过程中，专为消化工具返回的新信息服务。模型由此可以边干边核对：信息收齐没有、下一步合规吗、错了能否回头。<\/li><li><strong>基准与指标<\/strong>：评测使用 τ-bench 客服基准，考察与模拟用户对话、一致遵循政策、操作环境数据库三件事；主指标 pass^k 衡量同一任务 k 次独立试验全部成功的概率，看重的是一致性与可靠性，而非单次最佳。<\/li><li><strong>怎么用才有效<\/strong>：在系统提示中给出领域示例，示范“行动前先想什么”——取消航班要核验哪些条件、订三张机票如何按会员等级计算行李费；长而复杂的指令放在系统提示比放在工具描述里更有效。<\/li><\/ul><h4>关键细节与数据<\/h4><ul><li>航空域（政策复杂）：think 加优化提示的 pass^1 达 0.570，基线 0.370，相对提升 54%；优势延续到 k=5 仍为 0.340 对 0.100，说明提升的是整体一致性而非运气。<\/li><li>零售域（政策较简单）：仅添加工具、不加提示即达 0.812，基线 0.783，扩展思考反而只有 0.770——简单域“有个地方想”就够，困难域必须示范“怎么想”——文章认为航空域提升最大的原因正是政策复杂度高，模型从示范中获益最多。<\/li><li>SWE-bench：在 Claude 3.7 Sonnet 的评测环境中加入改编版 think 工具，助力取得 0.623 的当时最优成绩；隔离效应平均提升 1.6%（Welch's t 检验 p &lt; .001，效应量 d = 1.47）。文末脚注指出 Claude 3.5 Sonnet (New) 也能复现增益，说明结论可跨模型推广。<\/li><li>适用边界：非顺序工具调用与简单指令遵循不会受益，只会平白增加提示长度与输出 token。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>think 工具是清单 5〈上下文工程〉“注意力预算”论断的一个精巧注脚：模型自己生成的高信号 token 被注入上下文，用于对齐目标而非搬运信息。它与扩展思考的关系预示了清单 11〈高级工具使用平台能力〉的方向——外挂式思考逐步内化为平台与模型能力。其消融实验与 pass^k 设计，也正是清单 27〈智能体评估〉所倡导的评测纪律的早期范例。<\/p><h4>实践启示<\/h4><p>最反直觉的启示是：工具不必执行任何操作也有价值——工具空间本身就是行为空间。落地路径清晰：从模型最挣扎的政策遵循类场景开始，定义一个零副作用的思考工具，配上领域示例写进系统提示，观察实际使用并迭代。成本几乎为零，且不改变外部行为——除非模型主动调用，它不干扰任何现有工具或工作流，失败风险温和。落地之后还应持续观察模型实际如何使用它，并据此调整提示、鼓励更有效的思考模式。<\/p><h4>局限与时效<\/h4><p>本文的时效性本身就是内容的一部分：2025 年 12 月 15 日的文首更新明确表示，扩展思考能力已大幅进步，大多数情况下建议直接使用该功能而非专用 think 工具。到 2026 年 10 月回看，think 工具作为生产技巧已基本完成历史使命，被内化的推理能力与交错思考取代。但它留下的两条认知依然有效：其一，为模型在行动间隙创造反思空间，能显著改善多步任务的表现；其二，用示例“教它怎么想”比单纯“给它能力”更重要——这条至今仍是提示与工具设计的要点。此外，文中对适用边界的自我克制——明确列出不适用的场景而非兜售万能药——在同类最佳实践文章中并不多见。<\/p>","7":"<h4>它在回应什么问题<\/h4><p>传统软件是确定性系统之间的契约：同样的输入必然得到同样的输出。而智能体是非确定性的——被问“今天要带伞吗”，它可能调天气工具、凭常识作答，也可能先反问地点，甚至幻觉出工具的用法。本文回应的问题是：当契约的另一方从确定性系统换成非确定性智能体，工具该如何设计？以及更进一步——能否让智能体参与改进我们交给它的工具？<\/p><h4>核心内容拆解：评估驱动的迭代循环<\/h4><ul><li><strong>原型<\/strong>：把所用库、API、SDK 的文档（如官方站的 llms.txt）喂给 Claude Code 快速生成工具原型，用本地 MCP 服务器或桌面扩展（DXT）包装后接入 Claude Code 或 Claude Desktop 自测，先亲手摸出粗糙的边缘。<\/li><li><strong>评估<\/strong>：基于真实使用生成数十个任务与可验证结果的配对，验证器从精确字符串比对到让 Claude 当裁判皆可，但要避免因格式、标点、措辞差异误杀正确答案的过严验证器；任务须来自真实场景、需要多步乃至数十次工具调用，拒绝把搜索词喂到嘴边的沙盒题。评估智能体的系统提示应让它同时输出推理与反馈块，借思维链提升有效智能；用 Claude 评测时也可直接开启交错思考拿到同类效果。<\/li><li><strong>让智能体改工具<\/strong>：把评估转录拼接起来交给 Claude Code，让它批量分析转录、重构工具实现与描述的自洽性；同时收集准确率之外的指标——调用次数、耗时、token 消耗、报错数。作者披露本文多数建议正来自用 Claude Code 反复优化内部工具的过程；配上 held-out 测试集防过拟合后，效果甚至超过研究人员手写的“专家级”实现。<\/li><\/ul><h4>关键细节与数据<\/h4><ul><li>真实事故：Claude 的 web search 工具上线时，模型总在查询参数里画蛇添足地追加 2025，使结果偏向新内容、拉低表现，最终靠改进工具描述纠正。<\/li><li>响应瘦身：detailed 响应 206 token、concise 响应 72 token，约省三分之二；把任意字母数字 UUID 解析成自然语言名称，能显著降低幻觉、提升检索精确率。<\/li><li>整合工具：与其 list_users、list_events、create_event 三件套，不如一个 schedule_event；与其 read_logs 不如 search_logs；与其按 ID 三次查询客户资料，不如 get_customer_context 一次给全。<\/li><li>命名与格式：前缀式与后缀式命名空间对评测有不可忽视且因模型而异的影响；响应结构（XML、JSON、Markdown）同理，都应靠自己的评估决定。Claude Code 默认把工具响应限制在 25,000 token。<\/li><li>描述即提示词：对工具描述的精细打磨，曾让 Claude Sonnet 3.5 在 SWE-bench Verified 上取得当时最优成绩。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>本文与清单 5〈上下文工程〉是同一场战役的两面：5 号谈“给模型什么上下文”，本文谈工具如何节约并返回高信号上下文，两者的“最小可行工具集”主张一脉相承。清单 8〈MCP vs CLI 基准〉与清单 9〈也许不需要 MCP〉继续追问工具接口本身该长什么样；清单 10〈代码执行改造 MCP〉把“按需返回、智能体自主过滤”推向代码执行方案；清单 12〈Agent Skills〉的“先评估再构建”则直接沿用本文的评估驱动方法论。<\/p><h4>实践启示<\/h4><p>核心心智转换是“为智能体写软件”：像给新同事写使用说明那样写工具描述，把隐含的查询格式、术语定义、资源关系全部显式化；参数命名消除歧义，用 user_id 而非 user；错误信息要写成可执行的改进建议，而非不透明的报错码或堆栈；能分页、过滤、截断，就别让原始数据涌进上下文。作者的一条经验之谈令人宽慰：对智能体足够“符合人体工学”的工具，对人类往往也出奇地直观。更激进的一步是把评估转录直接交给 Claude，让它替你迭代工具——这是“用智能体造智能体”最早也最实用的示范之一。<\/p><h4>局限与时效<\/h4><p>到 2026 年 10 月，文中部分具体做法已被更高层的机制吸收：Agent Skills 与代码执行让智能体可以运行脚本而非依赖成百上千个预定义工具，工具的动态加载与搜索缓解了“数百个工具挤进上下文”的问题，MCP 协议本身也在持续演进——文末作者本就预期交互机制会随协议与模型升级而变化。但三条骨架并未过时：工具是确定性与非确定性系统之间的契约；工具质量必须靠评估度量而非直觉；工具响应的价值在信号密度而非信息量。这三条至今仍是工具工程的标准答案。<\/p>","8":"<h4>它在回应什么问题<\/h4><p>MCP 生态火热，但编程智能体的资深用户普遍怀疑：许多 MCP 向上下文倾倒冗余输出、暴露几十个工具，毒化上下文拖垮模型表现，于是实践者（包括作者本人）倾向让智能体用 shell 直接调 CLI。作者开篇便类比：就像很多会议本可以是邮件，很多 MCP 本可以是 CLI 调用——GitHub MCP Server 重造了 GitHub CLI 已有的功能，Context7 上他自家库的代码片段被他评价为毫无用处。但他同样列出 MCP 的合理场景：没有顺手的 CLI 时、客户端没有内置 shell 时、有状态工具更适合写成 MCP。既然两边都是经验之谈，“但如果我们错了呢”？他决定用数据量化：什么更贵、什么更慢、成功率谁高，以及训练数据里固有的工具知识能否被一份写给陌生工具的文档追平。<\/p><h4>实验设计<\/h4><p>他为这次研究专门写了 terminalcp：一个类 tmux 的终端复用器，让智能体像 Playwright 控制浏览器那样控制调试器、REPL 等 TUI 程序，同时提供逻辑同源的 MCP server 与 CLI 两种形态以保证公平。评测框架用 markdown 定义任务与工具：3 个任务（用 LLDB 调试崩溃程序、驱动 Python REPL、操纵 OpenCode 的 TUI 切换模型并完成项目分析）× 4 个工具（terminalcp MCP、terminalcp CLI、tmux、screen）× 每组合 10 次，共 120 次运行。terminalcp 本身也按 token 效率设计：只暴露一个聚合工具而非每个命令一个工具，回复用纯文本而非 JSON——他引述 Anthropic 早期文档中关于工具数量的提醒与旧版 cookbook 里的批量工具设计作为依据。每次用全新干净的 Claude Code 实例；四个工具的说明文档结构一致以示公平，还都附了一句“可以自行运行 --help 获取更多信息”，把探索权留给模型；模型输出 TASK_COMPLETE 或 TASK_FAILED 标记，结束时用 /cost 采集时间与成本，最后由 Claude 充当 judge 逐组合复盘并排序。作者自嘲这套框架不求科学严谨，只为攒些“能在派对上烦人的统计数字”；运行若停滞，测试器还会推模型一把继续。<\/p><h4>关键数据<\/h4><ul><li>MCP 对 CLI 基本打平：terminalcp 两种形态成功率都是 100%，MCP 快 23%（51 分钟对 66 分钟）、便宜 2.5%（$19.45 对 $19.95）。<\/li><li>screen 在项目分析任务上成功率 0%，无法在 OpenCode 的 TUI 里切换模型，整体成功率被拉低到 67%。<\/li><li>MCP 的隐性优势在安全检查：CLI 每次调用 bash 都触发 Claude Code 的恶意命令检测（由 Haiku 执行），Haiku 消耗达 1.3M 到 2M token，而 MCP 只有 35k。<\/li><li>复杂度决定胜负：简单任务（LLDB 调试、Python REPL）上 tmux 反而比 terminalcp 便宜 10-22%；复杂任务上 terminalcp 凭干净输出比 tmux 便宜 39%。总账接近：terminalcp 约 $19-20，tmux $22。<\/li><\/ul><h4>结论：协议只是管道<\/h4><p>作者提炼三条：其一，工具设计压倒协议之争，token 高效、输出干净的自研工具能击败训练数据里见过的标准工具；其二，文档质量可以替代训练数据优势，terminalcp 靠说明文档也拿到 100% 成功率；其三，双方都能做到 token 高效，坏 MCP 的问题不在协议，而在于它们是把不必要的 JSON 到处倾倒的糟糕封装。给建设者的顺序建议：用户已有 shell 就先做好 CLI——更简单、更可移植，输出还能用管道二次过滤以提升 token 效率，这在 MCP 上做不到；之后想在好 CLI 之上加 MCP server，非常容易。他还在文末预告：框架结构上已留好评测其他编程智能体的口子，想看 Gemini CLI 与 OpenCode 的成绩。<\/p><h4>与清单其他文章的呼应<\/h4><p>本文是 7《为智能体写工具》的实证注脚——工具描述怎么写、暴露多少工具直接决定成败；也是 10《代码执行改造 MCP》的思想先声，后者把“上下文效率高于协议形式”推进到让模型写代码调度工具的方案。CLI 每次调用触发恶意命令检测的开销，与 26《auto mode 权限》讨论的权限与安全检查成本直接相关；文中的保守结论（先 CLI 后 MCP）在 9《也许不需要 MCP》里被推进为更彻底的 CLI 优先主张。<\/p><h4>局限与时效<\/h4><p>作者自承这不是严格的科学评测：任务只有 3 个、全部集中在终端控制域、judge 也是模型，样本与方法都有偏，judge 的排序里还叠加了易用性这类主观维度。到 2026 年 10 月回看：被测工具的版本与 Claude Code 的安全检测机制均已多轮迭代，具体百分比不可直接移植；MCP 生态更成熟，纯薄封装类 server 的生存空间被 Agent Skills 与 CLI 工具挤压。最耐用的结论是那句“协议只是管道”——决定智能体表现的是工具设计与文档质量，这一判断在此后的实践中反复得到验证。<\/p>","9":"<h4>它在回应什么问题<\/h4><p>在前一篇基准得出“打平”结论之后（见 8《MCP vs CLI 基准》），作者把立场推得更彻底：许多场景下你不仅不必纠结 MCP 对 CLI，甚至根本不需要 MCP。他以最常见的 MCP 用例——浏览器 DevTools——为标本，演示用几个几十行的 Node 脚本加一份 README 替代大型 MCP server。理由有三：通用 server 必须面面俱到，于是工具多、描述长、上下文开销大；难以扩展，改造别人的 server 得连同它的代码库一起读懂；不可组合，所有输出必须经过智能体上下文，不能直接落盘或拼接。<\/p><h4>账本对比<\/h4><p>他的真实需求只有四件事：启动浏览器（可带自己的登录 profile）、导航、在活动页面执行 JavaScript、截图。而人们常推荐的两款 server 都远超所需：Playwright MCP 有 21 个工具、占 13.7k token（约 Claude 上下文的 6.8%）；Chrome DevTools MCP 有 26 个工具、占 18.0k token（9.0%）。他的替代品是 start.js、nav.js、eval.js、screenshot.js 四个基于 Puppeteer Core 的小脚本，用法写进 README——总共 225 token，与 13.7k 到 18k 相差两个数量级。省 token 的诀窍是充分利用模型已有能力：模型本来就会写代码、查 DOM、用 Bash，不需要教程级的工具描述。eval.js 的设计尤其取巧：让模型写的 JavaScript 直接跑在页面上下文里，它只需会 DOM API，完全不必学 Puppeteer；截图工具把 PNG 写进临时目录并返回路径，模型再用视觉能力去“看”这张图。<\/p><h4>可生长的工具箱<\/h4><p>真正的杀手锏是随需扩展。想人工参与设计爬虫选择器，就让 Claude 现场写一个交互式 pick 工具——点选 DOM 元素、Ctrl 加点击多选、回车完成；需要 HTTP-only cookie（eval.js 运行在页面上下文拿不到），花不到一分钟让 Claude 生成 cookies 工具并补进 README；pick 工具还会为选中元素输出标签、id、class、文本片段与父级链路等结构信息，让模型一眼看懂页面骨架。相比调整、测试、调试一个现成 MCP server，这简单得多。他还用给 Hacker News 写爬虫的例子演示了完整流程：人点选元素，模型据此写出最小 scraper，日后 DOM 改版再点一遍即可修正。组合性也顺理成章：输出可存为文件供后续代码处理，多条调用能串进一条 Bash 命令。跨智能体复用的机制同样朴素：在 home 目录建 agent-tools 文件夹，浏览器开在 9222 远程调试端口上供各脚本连接，脚本统一加前缀防命名冲突，用 PATH 注入与 /add-dir 让 Claude Code 能按 @README.md 引用工具说明；作者明言更信任这种手动引用，而非 skills 的自动发现——后者在实践中不够可靠，何况 Claude Code 还会把所有可发现 skills 的 frontmatter 注入系统提示词。<\/p><h4>与清单其他文章的呼应<\/h4><p>文中直接对照 12《Agent Skills》：作者自述这类 README 模式在 Anthropic 发布 skills 之前就已在用，4《提示词即代码》里已有雏形；他肯定 skills 的渐进披露与面向非技术用户的跨产品分发——真正的增量是把这套实践带给不会写代码的大众——但指出它绑定特定生态，而 README 加脚本对任何智能体都有效。与 10《代码执行改造 MCP》互为表里——都让模型用代码与 Bash 而非固定工具清单解决问题；对 8《MCP vs CLI 基准》则是从“打平”走向“CLI 优先”的立场推进。<\/p><h4>实践启示<\/h4><ul><li>工具按需渐进加载：README 平时不占上下文，会话需要时才读，成本只在真正使用时支付。<\/li><li>用模型的代码能力压缩工具面：与其暴露二十个工具，不如给三个脚本加一句“你可以自己写代码”。<\/li><li>为自己维护结构：命名前缀、目录约定、README 模板，就是你的自建 skills 体系。<\/li><\/ul><h4>局限与时效<\/h4><p>作者以“能力越大、责任越大”自警：这套方案把结构设计与安全边界都交给用户，脚本里有 killall Chrome 之类的硬操作，也没有任何权限控制，且前提是 harness 具备可用的 shell 与代码执行环境；start.js 甚至要先用 rsync 把 Chrome 配置拷进临时目录——Chrome 不允许在默认配置上开调试端口，这类平台怪癖也得自己消化。所谓 6.8%、9.0% 的占比，也只是特定型号上下文窗口下的数字。到 2026 年 10 月回看：Agent Skills 已把渐进披露标准化，MCP 生态也出现了把 server 包装成 CLI 的桥接工具（作者后来在 16《造 Pi 学到的事》里推荐过 mcporter），两个世界正在收敛；但 225 token 对 18k token 的账依然成立，脚本加 README 仍是许多场景下性价比最高的默认选项。<\/p>","10":"<h4>它在回应什么问题<\/h4><p>MCP 自 2024 年 11 月发布以来迅速成为智能体连接外部系统的事实标准，社区已建起数千个 MCP 服务器。但 Anthropic 观察到，当智能体接上几十个服务器、成百上千个工具后，两笔隐藏开销开始失控：一是工具定义普遍被客户端一次性灌进上下文，规模大时模型还没读到用户请求，就要先消化几十万 token 的说明书；二是所有中间结果都必须流经模型——文中的例子是把 Google Drive 里的会议纪要写进 Salesforce，完整纪要在上下文里来回走了两遍，一场两小时的销售会议可能额外烧掉 50,000 token，更大的文档甚至会撑爆上下文窗口。这篇文章要回答的是：能否保住 MCP 的生态红利，同时不让工具本身拖垮效率？<\/p><h4>核心思路：把工具变成代码 API<\/h4><p>作者的方案是为每个 MCP 工具生成一个 TypeScript 文件，组织成 <code>servers/<\/code> 目录树，让智能体以程序员的方式工作：先浏览目录发现有哪些服务器，再按需读取要用到的工具文件了解接口，然后直接写代码调用。模型天生擅长写代码、也擅长在文件系统里导航，这套方案把两件事都变成了强项。由此带来五类收益：<\/p><ul><li><strong>渐进式披露<\/strong>：工具定义按需加载，也可加一个带详细程度参数的 search_tools 搜索工具，先按名字粗筛、再取完整 schema；<\/li><li><strong>结果就地过滤<\/strong>：取一万行的表格时先在代码里过滤，只把前 5 行打印给模型审阅，聚合、跨源连接、字段抽取同理；<\/li><li><strong>控制流代码化<\/strong>：循环、条件、重试写成普通代码，比如轮询 Slack 频道直到出现部署完成的消息；分支判断交给执行环境，还顺带省掉模型逐条评估的首 token 延迟；<\/li><li><strong>隐私保护<\/strong>：中间结果默认留在执行环境，模型只看到你显式打印的内容；更进一步，客户端可在数据抵达模型前把 PII 自动替换为 [EMAIL_1] 这类占位符，真实邮箱和电话只在两个工具之间流转、从始至终不经过模型，还能据此定义确定性的数据流向规则；<\/li><li><strong>状态与技能<\/strong>：把中间结果写进文件以便断点续跑；把跑通的代码存成可复用函数，配上 SKILL.md 就升级为结构化技能，智能体随使用逐步长出自己的高层工具箱。<\/li><\/ul><h4>关键细节与数据<\/h4><p>最常被引用的数字来自工具定义部分：按需加载把 token 消耗从 150,000 降到 2,000，节省 98.7%。Cloudflare 几乎同期发表了相同结论，并把这套做法命名为“Code Mode”，双方的核心洞见一致：LLM 擅长写代码，就该让它在代码里编排工具。文章末尾的提醒同样值得划线——代码执行不是免费午餐，运行模型生成的代码需要带沙箱、资源限制和监控的安全环境，这些基础设施开销是直接工具调用没有的，收益必须与实现成本放在一起权衡。<\/p><h4>与清单其他文章的呼应<\/h4><p>这篇是清单中 MCP 路线的转折点。Pi 系列的 8（MCP vs CLI 基准）和 9（也许不需要 MCP）从实测角度批评直接工具调用的上下文开销，本文相当于 MCP 阵营的正式回应：不弃用 MCP，而是改变它的暴露方式。三周后发布的 11（高级工具使用）把本文思路做成平台能力——Programmatic Tool Calling 对应代码编排，Tool Search Tool 对应渐进式披露，一一对得上。而“把跑通的代码存为技能”直接通向 12（Agent Skills），结果过滤与上下文瘦身则是 5（上下文工程）在工具层的落地。<\/p><h4>实践启示<\/h4><p>如果智能体只接十来个小工具，直接调用依然是对的；一旦工具定义吃掉上万 token，或中间数据量大到模型在搬运时出错，就该考虑代码执行路线。落地可分三步走：先做文件树或工具搜索，成本最低；再让聚合类任务整体下沉到执行环境；最后才上 PII token 化这类安全增强。另外，技能沉淀值得从第一天就做——今天为单次任务写的胶水代码，就是明天的技能库。<\/p><h4>局限与时效<\/h4><p>到 2026 年 10 月回看，文中担忧的运维门槛已被大幅削平：Anthropic 先把沙箱运行时开源（25），再把代码编排做成托管 API（11）；开源侧的 18 号 Hermes 也把 execute_code 作为一等能力，说明这条路线已近行业默认。但要留意两点：其一，98.7% 的节省基于数千工具的极端场景，小工具库收益有限，11 号同样给出少于 10 个工具不建议开启的判断；其二，文中示例是自建客户端方案，如今多数平台已内置等价物，从零照抄这棵 TypeScript 目录树可能是在重造轮子。<\/p>","11":"<h4>它在回应什么问题<\/h4><p>2025 年 11 月下旬，Anthropic 把工程博客里反复讨论的三个痛点打包成平台级答案。背景是智能体要跨几十个 MCP 服务器、上千个工具工作，而传统工具调用有三个结构性缺陷：工具定义撑爆上下文，Anthropic 内部见过优化前消耗 134K token 的工具定义；中间结果污染上下文，分析一个 10MB 日志文件时整份文件都得进窗口，哪怕只需要错误频次的摘要；以及每次调用都是一次完整推理，模型还要用自然语言“目测”数据、手工汇总，又慢又容易错。再加一层：JSON schema 能定义结构合法，却表达不了使用惯例——日期该用什么格式、ID 长什么样、哪些可选参数应一起出现。三项新功能分别对准这三类病灶。<\/p><h4>三项能力拆解<\/h4><ul><li><strong>Tool Search Tool<\/strong>：把工具标记为 defer_loading，模型初始只看到一个约 500 token 的搜索工具，按需检索后再把命中的三五条定义展开进上下文。平台内置 regex 和 BM25 搜索，也允许自接向量方案；延迟加载的工具不进初始 prompt，因此不影响提示词缓存。<\/li><li><strong>Programmatic Tool Calling<\/strong>：模型改写 Python 编排代码，脚本在沙箱化的 Code Execution 环境里运行，调工具时暂停等结果、结果由脚本而非模型消化，跑完只把输出交回上下文。官方示例是预算合规检查：二十名员工的 Q3 报销逐条对比预算，两千多行明细、200KB 原始数据不再进上下文，模型只看到最终两三个超标者约 1KB 的结论，并行用 asyncio 显式表达。<\/li><li><strong>Tool Use Examples<\/strong>：在工具定义里直接附上输入示例，用具体数据教模型惯例——日期写 YYYY-MM-DD、用户 ID 的样式、critical 工单要带完整联系方式和升级配置。官方建议每工具 1 到 5 个示例，覆盖从最小到完整的规格谱系。<\/li><\/ul><h4>关键细节与数据<\/h4><p>三项能力各有一组内部测试数字：工具搜索在大型工具库的 MCP 评测上，Opus 4 准确率从 49% 升到 74%，Opus 4.5 从 79.5% 升到 88.1%；典型场景下上下文占用从约 77K 降到约 8.7K，相当于节省 85%。程序化调用在复杂研究任务上平均 token 从 43,588 降到 27,297（降 37%），内部知识检索从 25.6% 到 28.5%，GIA 基准从 46.5% 到 51.2%；一个代码块里编排二十多个调用可省去 19 次以上的推理往返。示例教学把复杂参数处理的准确率从 72% 提到 90%。文章同时给出明确的适用边界：工具少于 10 个、定义紧凑、或模型本就该看到全部中间结果时，不必启用。<\/p><h4>与清单其他文章的呼应<\/h4><p>这篇几乎是 10（代码执行改造 MCP）的平台化续篇，致谢里也明言借鉴了 Cloudflare 的 Code Mode。10 号还停留在“自己生成文件树、自己写客户端”的工程方案，11 号把它变成三个 API 参数，等于官方替你把架构决策做完。它也回应了 9（也许不需要 MCP）的核心抱怨——工具定义太贵，如今在协议之外给了第二条路。对工具作者而言，7（为智能体写工具）强调描述质量，本篇的示例机制把这个要求升为一等公民：好工具不仅要描述写得好，还要教得好。更远看，18 号 Hermes 文档宣称其 execute_code 以程序化工具调用把多步管线折叠进单次推理，说明这套能力已扩散到开源侧。<\/p><h4>实践启示<\/h4><p>文章的分层策略值得照抄：先找最大瓶颈——定义吃上下文用搜索、中间结果太大用程序化调用、参数老出错用示例——再按需叠加，而不是三件套一起上。工程细节上有三条硬建议：三到五个最常用工具保持常驻、其余全部延迟加载；返回格式要写清楚，模型要靠它写解析代码；示例必须用真实感数据，别用 “string” 和 “value” 占位。落地时注意这是 beta 功能，需带 advanced-tool-use-2025-11-20 头启用。<\/p><h4>局限与时效<\/h4><p>发布时三项功能均为 beta，数字全部来自 Anthropic 内部评测，缺第三方复现；部分基准提升幅度有限（如知识检索约 3 个百分点），提示收益高度依赖任务形态。调试面也变大：脚本一次跑完二十个调用，出错时的可观测性设计文中未展开。到 2026 年 10 月回看，这套思路的扩散快于其形态存续：代码编排已成各家智能体产品标配，开源侧有 18 号 Hermes 的 execute_code，但具体 API 形态与版本号大概率已迭代，照抄本文 JSON 片段前应查最新文档；文中“少工具不开、多工具必开”的判断框架反而历久弥新。<\/p>","12":"<h4>它在回应什么问题<\/h4><p>通用智能体已经能操作完整的计算环境，但真实工作需要程序性知识与组织上下文：文档怎么排版、表单怎么填、哪些脚本可靠。此前的解法是为每个用例定制一个碎片化的智能体。2025 年 10 月 16 日，Anthropic 发布 Agent Skills：把专长装进文件与文件夹——一个目录、一份 SKILL.md、若干脚本与资源，由智能体在运行时动态发现并加载。作者的比喻是“给新员工准备入职指南”，致谢里还不忘说团队几位作者“真的很喜欢文件夹”。<\/p><h4>核心机制：三级渐进披露<\/h4><ul><li><strong>第一级，元数据<\/strong>：SKILL.md 开头的 YAML frontmatter 只含 name 与 description，启动时预载入系统提示——刚好够 Claude 判断何时该用这个技能，而不必载入正文。<\/li><li><strong>第二级，正文<\/strong>：当 Claude 认为技能与当前任务相关，才把完整 SKILL.md 读进上下文。<\/li><li><strong>第三级及更深，附属文件<\/strong>：场景专用内容拆成被 SKILL.md 引用的独立文件。官方 PDF 技能把表单填写说明单独放进 forms.md（另有 reference.md），作者信任 Claude 只在填表时才读它。文章的类比是“目录—章节—附录”；由于智能体自带文件系统与代码执行工具，可打包进技能的上下文实际上没有上限。<\/li><\/ul><p>把触发过程看成一个序列：启动时上下文里只有系统提示、各技能的元数据与用户消息；Claude 判定技能相关后用 Bash 读取 SKILL.md，再按需读 forms.md，然后才开始干正事——每一步都只取当下所需。<\/p><h4>技能与代码执行<\/h4><p>技能还能附带可执行代码，理由直白：用 token 生成来排序列表，远比直接运行排序算法昂贵，而许多应用需要只有代码能提供的确定性。PDF 技能内置一段预写 Python 脚本，读取 PDF 并抽取全部表单字段——Claude 直接运行脚本，脚本与 PDF 本体都不必进入上下文，且因为代码是确定性的，工作流可重复。这让“教智能体流程”与“给智能体工具”在同一文件夹里统一了起来。<\/p><h4>与清单其他文章的呼应<\/h4><p>渐进披露是清单 5〈上下文工程〉“注意力预算”思想的制度化落地——把“最小高信号 token 集合”落成文件格式约定；“从评估开始”与清单 7〈为智能体写工具〉的评估驱动循环同源；脚本作为确定性工具与清单 10〈代码执行改造 MCP〉互为印证；在清单 13〈Claude Code 最佳实践〉中，技能已成为 .claude/skills/ 下的标准扩展方式。文中也明确技能将与 MCP 互补，负责教会智能体使用外部工具的复杂工作流。<\/p><h4>实践启示<\/h4><ul><li>从评估开始：先在代表性任务上运行智能体、观察哪里吃力或缺上下文，再增量构建技能补短板，而不是预先猜测智能体需要什么——作者特别提醒关注 Claude 实际用到了什么，而非你预判它需要什么。<\/li><li>从 Claude 的视角打磨 name 与 description——它们直接决定技能会不会被触发；监控真实使用中的意外轨迹与过度依赖，并让 Claude 把成功路径与常见错误沉淀进技能、跑偏后自我反思。<\/li><li>安全不可省：恶意技能可能引入漏洞或诱导数据外泄与意外操作；只从可信来源安装，低信任来源要先审计文件内容、代码依赖与联网指令。<\/li><li>结构为规模而生：SKILL.md 过长就拆分成引用文件，互斥场景分开存放以省 token；代码既是可执行工具也是文档，须写明该直接运行还是读入作参考。<\/li><\/ul><h4>局限与时效<\/h4><p>发布时技能仅靠描述字段触发，技能数量多了之后如何避免误触发与互相干扰，文中没有给出机制层面的答案；安全审计主要依赖用户自觉，也是现实短板；技能效果还高度依赖 name 与 description 的写作质量，等于把工具描述工程的难题原样搬了过来。时效上有一条硬信息：2025 年 12 月 18 日的更新宣布 Agent Skills 已作为开放标准发布，以实现跨平台可移植；支持面覆盖 Claude.ai、Claude Code、Claude Agent SDK 与开发者平台。到 2026 年 10 月，技能已成为 Claude 生态中注入领域上下文的主流机制——清单 13 的活文档把 skills 列为标准扩展方式，插件体系也在打包分发技能；文末展望的“智能体自己创建、编辑、评估技能”正从愿景进入工程议程。上下文工程由此从开发者的手工活，变成可封装、可分享的组织资产。<\/p>","13":"<h4>它在回应什么问题<\/h4><p>原文发表于 2025 年 4 月 18 日，是最早系统回答“当编程助手变成能读文件、跑命令、自主干活的智能体，工程师该怎么工作”的官方文本之一。它最核心的贡献不是技巧清单，而是一个硬约束：Claude 的上下文窗口装着全部对话、读过的每个文件与每条命令输出，而性能随窗口填满而衰减——所以上下文窗口是最重要的待管理资源，此后几乎所有建议都由这条约束推导出来。需要说明：当前页面已改版为持续维护的文档形式，远不止 2025 年 4 月的原貌。<\/p><h4>核心内容拆解<\/h4><ul><li><strong>给 Claude 可运行的验证<\/strong>：测试、构建、截图，任何能返回通过或失败信号的检查都能让循环自动闭合；没有检查，“看起来做完了”就是唯一信号，你就成了验证回路本身。可以把检查设为 /goal 目标、用 Stop hook 做确定性门禁，或派一个全新上下文的验证子智能体唱反调。<\/li><li><strong>先探索、再计划、后编码<\/strong>：plan mode 下读文件、答问题、出计划，批准后实现并提交的四阶段工作流；但若一句话能说清 diff，就跳过计划直接做。<\/li><li><strong>提示与环境<\/strong>：引用具体文件与现有模式、描述症状与“修好”的样子；用 /init 生成 CLAUDE.md 并定期修剪——臃肿的 CLAUDE.md 会让 Claude 忽略真正的指令，判断标准是“删掉这行会导致出错吗”。<\/li><li><strong>扩展机制分层<\/strong>：建议性知识进 CLAUDE.md，按需加载的领域知识进 skills，必须每次执行的动作进 hooks（确定性保证），隔离调研交给子智能体，外部服务优先 gh 等 CLI 工具，再接 MCP 与插件。<\/li><li><strong>上下文管理<\/strong>：不相关任务之间 /clear；同一问题纠正两次就该清空、带着教训重写更好的提示；自动压缩保留关键代码与决策，也可用 /compact 定向指示；调研尽量用子智能体挡在主上下文之外。<\/li><\/ul><h4>关键细节与数据<\/h4><ul><li>规模化路径：claude -p 非交互模式接入 CI、pre-commit hook 与脚本；/batch 把改动拆给 5 到 30 个子智能体、各自在独立 worktree 工作；示例任务为约 2,000 个 Python 文件的 Python 2 迁移，先试跑 2-3 个文件再全量执行，并用 --allowedTools 限定无人值守时的权限。<\/li><li>并行会话组合：git worktrees 隔离编辑、跨会话消息传递、Agent view（研究预览）、Agent teams（实验性、默认关闭）；Writer/Reviewer 模式用全新上下文审查刚写的代码，避免作者偏爱自己的产出。<\/li><li>五类失败模式：kitchen sink 会话、反复纠正污染上下文、过度规格化的 CLAUDE.md、信任而不验证、无限探索——每条都配了修法。<\/li><li>权限演进：auto mode 由分类器模型审查大多数操作、只拦截看似有风险的动作（范围升级、未知基础设施等），自 v2.1.283 起成为交互式会话的默认起始模式；沙箱提供 OS 级隔离。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>本文是清单 5〈上下文工程〉在具体产品上的操作化：压缩、子智能体隔离调研、“最小高信号上下文”原则贯穿始终。skills 一节直接建立在清单 12〈Agent Skills〉之上；auto mode 与沙箱分别展开为清单 26〈auto mode 权限〉与清单 25〈Claude Code 沙箱化〉；对抗式审查子智能体则是清单 27〈智能体评估〉思想在个人工作流中的缩影。<\/p><h4>实践启示<\/h4><p>把智能体编程当作带一个有学习曲线的新同事：用可验证信号替代目测、用小而具体的提示替代模糊愿望、用清空重开替代无休止纠偏、用子智能体把调研挡在主上下文之外。文末忠告同样重要：这些模式不是铁律——何时该让上下文积累、何时该跳过计划、何时该故意用模糊提示，需要在使用中长出自己的直觉，没有指南能替你完成这一步。<\/p><h4>局限与时效<\/h4><p>必须写明的时效注：原文是 2025 年 4 月的一篇博客，后来页面改版为持续维护的文档形式，新增了验证工作（/goal、Stop hook、对抗式审查）、并行会话、检查点回滚、/batch 扇出、auto mode、skills 与插件等章节，文中出现的版本号（如 v2.1.283）反映的是改版时点而非发表时点。到 2026 年 10 月回看：早期版本里大量手动审批权限的内容已被 auto mode 与沙箱大幅吸收，“多 Claude 并行”从民间技巧变成官方主线；本文的角色也从“一次性最佳实践清单”转为“官方活文档”。真正稳定的是底层判断——上下文是稀缺资源、验证循环决定自主性上限、扩展机制按“建议/知识/强制/隔离”分层，这三条至今没有变过。<\/p>","14":"<h4>它在回应什么问题<\/h4><p>2025 年 5 月 16 日，编码 AI 还以 IDE 内实时配对为主流形态。OpenAI 发布 Codex 研究预览，提出另一种工作方式：把任务异步委派给云端智能体，多任务并行推进，人只负责评审与合并。发布文要回答的是：云端软件工程智能体如何工作、如何让用户信任它的产出、以及它会怎样改写工程师的日常习惯。<\/p><h4>核心内容拆解<\/h4><p>产品形态：Codex 从 ChatGPT 侧边栏进入，点 Code 派发编码任务、点 Ask 询问代码库问题；每个任务在预加载仓库的独立隔离沙箱中处理，可读写文件、运行测试、linter 与类型检查；单任务通常 1 到 30 分钟，进度实时可见。完成后它在自己的环境里提交变更，并附上终端日志与测试输出作为可验证的引用证据；用户可继续要求修订、开 GitHub PR 或并入本地环境，还能把容器配置得尽量接近真实开发环境。<\/p><p>模型与配置：<code>codex-1<\/code> 是 o3 的软件工程特化版，用多种环境下的真实编码任务做强化学习，目标是产出贴近人类风格与 PR 习惯、严格遵循指令、能迭代跑测试直到通过的补丁。仓库内可放置 <code>AGENTS.md<\/code> 纯文本文件，告诉智能体如何导航代码库、跑哪些测试命令、遵循什么规范；附录甚至公开了完整系统消息，并明确作用域规则——嵌套更深的 AGENTS.md 优先于外层，而提示中的直接指令又高于一切 AGENTS.md。安全边界上，发布配置在任务执行期间禁网，智能体只能接触仓库代码与 setup 脚本预装的依赖；模型被训练为精确拒绝恶意软件开发请求，同时不误伤内核工程等正当低层技术。<\/p><h4>关键细节与数据<\/h4><ul><li>评测口径：排除 23 个无法在其内部基础设施运行的 SWE-bench Verified 样本；codex-1 以最大 192k 上下文、中等推理力度测试，官方称即便没有 AGENTS.md 与定制脚手架也表现强劲。<\/li><li>同步发布的 codex-mini 是 o4-mini 的 CLI 特化版，成为 Codex CLI 默认模型并以 codex-mini-latest 进入 API，定价每百万输入 1.50 美元、输出 6 美元，提示缓存享 75% 折扣；ChatGPT 账号可直接登录 CLI，免手动配置 API token。<\/li><li>早期用户画像：OpenAI 内部工程师用它卸载重构、改名、写测试等打断心流的事；Superhuman 让产品经理不惊动工程师即可提交轻量代码变更；Temporal、Kodiak、Cisco 分别用于后台长任务、自动驾驶代码库与产品组合评估。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>AGENTS.md 与 13 号（Claude Code 最佳实践）中的 CLAUDE.md 是同一思想的两个流派，后来演化为跨工具的通用约定；多任务并行沙箱的形态在 21 号（并行 Claude 写 C 编译器）得到独立印证；发布时的禁网执行与 25 号（Claude Code 沙箱化）互为镜像——一个在云端圈地，一个在本地设限。1 到 30 分钟的任务时长与未来处理更长周期任务的展望，是 22 号与 23 号长时 harness 研究的先声；云端托管、环境预置、产出可审的思路也通往 24 号（Managed Agents 解耦大脑与双手）；SWE-bench 叙事则接续 34 号（SWE-bench Sonnet 研究）。<\/p><h4>实践启示<\/h4><p>委派式开发要求重新设计任务粒度：任务写得足够清晰、可验证，配上与真实开发环境一致的容器、可靠测试与 AGENTS.md 文档，智能体表现才最好——这与为人类新人做入职准备是同一门功课。信任来自证据而非承诺：日志与测试引用让每一步可回溯，人工评审仍是集成前的必要环节。团队流程也可围绕异步智能体重构：清晨分派任务、把 on-call 问题交给后台、让工程师保持心流。<\/p><h4>局限与时效<\/h4><p>必须先读页面顶部的官方自声明：此发布文已过时，当前产品与团队工作流请转至 Codex 与 ChatGPT Work 两个入口。演化也确实极快：2025 年 6 月 3 日的更新就让 Codex 向 Plus 用户开放，并允许任务执行期间接入互联网——禁网只是发布时点的配置。发布时明确缺失的前端图像输入与执行中纠偏能力，以及数周免费后转限流定价的安排，均已随版本演进改变；到 2026 年 10 月，o3 基座也早已被多代新模型接替。本文的持久价值在于确立了异步委派、并行沙箱、AGENTS.md 与证据化产出这套范式，而非具体产品现状。<\/p>","15":"<h4>它在回应什么问题<\/h4><p>2025 年 10 月 6 日 DevDay 发布的 AgentKit，瞄准智能体开发中最琐碎的另一半工程：编排工具没有版本管理、连接器要自己写、评估靠手工流水线、上线前还要为聊天界面熬上数周。OpenAI 把构建、部署、优化装进同一套件，宣称开发者从此可以可视化地设计工作流、更快嵌入智能体界面，摆脱碎片化工具链。<\/p><h4>核心内容拆解<\/h4><p>与 3 月的 Agents SDK 相比，这轮发布的重心明显从代码编排转向图形化与企业平台化。AgentKit 由三大件加评估扩展组成。Agent Builder 是可视化画布：拖拽节点编排多智能体工作流、连接工具、配置自定义护栏，支持预览运行、内联评估配置与完整版本管理，可从空白画布或预置模板起步；还能挂接开源的 Guardrails 安全层——模块化设计，可掩蔽或标记 PII、检测越狱，支持独立部署或经 Python 与 JavaScript 库接入。Connector Registry 面向企业管理员，把 ChatGPT 与 API 两侧的数据与工具连接收进单一管理面板，预置 Dropbox、Google Drive、SharePoint、Microsoft Teams 连接器与第三方 MCP，前提是先启用 Global Admin Console。ChatKit 解决嵌入问题：把可定制、贴合品牌风格的对话式智能体界面装进产品，替你处理流式响应、线程管理与思考过程展示。Evals 新增四项能力：datasets、trace grading（对智能体工作流做端到端评估与自动打分定位短板）、基于人工标注与评分器输出的自动提示优化、第三方模型支持。RFT（强化微调）在 o4-mini 上正式可用、GPT-5 处于私测，新增 custom tool calls 与 custom graders 两项 beta 特性。<\/p><h4>关键细节与数据<\/h4><p>客户数字是本文的卖点：Klarna 的支持智能体处理三分之二的工单；Clay 借销售智能体实现 10 倍增长；Ramp 从空白画布到买家智能体只用数小时，迭代周期缩短 70%、两个冲刺而非两个季度上线；LY Corporation 不到两小时跑通首个多智能体工作流；HubSpot 与 Canva 用 ChatKit 构建客服体验，后者称省下逾两周时间、一小时内完成集成。可用性方面，ChatKit 与新 Evals 能力全量 GA，Agent Builder 处于 beta，Connector Registry 开始向部分 API、ChatGPT Enterprise 与 Edu 客户推进 beta；全部包含在标准 API 模型定价内，另规划独立的 Workflows API 与 ChatGPT 内的智能体部署选项。<\/p><h4>与清单其他文章的呼应<\/h4><p>AgentKit 是 3 号（Responses API 与 Agents SDK 发布）七个月后向产品层的延伸，文中明言构建于 Responses API 之上。Agent Builder 的可视化路线耐人寻味：1 号曾告诫警惕框架的额外抽象，36 号（框架速览）里 Rivet、Vellum 等 GUI 工具也被定位为入门友好——大厂最终亲自下场做画布，却又在八个月后亲手关停。Connector Registry 收编第三方 MCP，可放进 32 号（MCP 发布文）以来的协议演化线中阅读；Evals 扩展与 27 号（智能体评估）主题直接重合；Guardrails 分层思想承接 2 号实用指南的护栏主张，其缺失的代价可参见 28 号（三起事故复盘）。Klarna 案例则回扣了 1 号客服附录中按解决结果说话的想象。<\/p><h4>实践启示<\/h4><p>评估先行是可迁移的经验：trace grading 让定位短板从猜测变成查看，先搭评估链路再堆功能。可视化的最大价值未必是搭建速度，而是让产品、法务、工程在同一张画布上协作——Ramp 正是借此压缩了迭代周期。企业采用必须先过治理关：Connector Registry 与 Global Admin Console 的绑定说明，多工作区的数据与工具治理是智能体平台的前置条件，而非事后补丁。<\/p><h4>局限与时效<\/h4><p>阅读本文必须先看正文顶部的官方更新：2026 年 6 月 3 日，OpenAI 宣布关停 Agent Builder 与 Evals 产品，2026 年 11 月 30 日之后不再可用——距发布仅八个月。官方指引是：需要工作流即代码的用户转向 Agents SDK（见 35 号），适合自然语言提示的场景转向 ChatGPT 中的 Workspace Agents。因此本文的持久价值在于需求判断而非工具本身：可视化编排、连接器治理、内嵌评估这些需求真实存在，但 OpenAI 以行动承认了承载形态的选型失误——代码优先与 ChatGPT 原生体验胜出。仍在使用这两个产品的团队，需要在 2026 年 11 月 30 日前规划迁移。另需注意：客户成效数字均为厂商引用的个案表述，不宜直接外推；RFT 各档状态与定价也应以当前文档为准。<\/p>","16":"<h4>它在回应什么问题<\/h4><p>作者用了三年 LLM 辅助编程，对 Claude Code 的不满累积成三件事：功能膨胀成“宇宙飞船”，八成功能他用不上；系统提示词与工具集随版本悄悄变化，破坏工作流并改变模型行为；大量内容在后台注入且不进 UI，你根本做不了真正的上下文工程，而他把可控上下文视为产出质量的决定因素。加上自托管模型在现有 harness 里工具调用频频失灵，他选择自己造 Pi——名字刻意难以搜索——哲学只有一句：if I don't need it, it won't be built（不需要的就不造）。<\/p><h4>分层拆解<\/h4><ul><li><strong>pi-ai<\/strong>：统一 LLM API。作者断言接入所有主流厂商只需要四种 API——OpenAI Completions、OpenAI Responses、Anthropic Messages、Google Generative AI，其余都是各家方言：字段好恶（store、max_tokens、developer 角色、reasoning_effort）、reasoning 字段名不一、token 统计是“狂野西部”（Anthropic 最规范）、Google 至今不支持工具调用流式。两大特色是跨厂商上下文交接（Anthropic 的 thinking 转成带标签文本）与全链路 abort 并返回部分结果——很多统一 API 连中断都不支持。这套 API 已用于七个生产项目。模型注册表从 OpenRouter 与 models.dev 解析生成，自托管模型也只需手写一个 Model 对象即可接入；至于为何不用现成的 Vercel AI SDK，他的诊断与 Armin 一致——直接对接厂商 SDK，换取更小的表面积与完全控制。<\/li><li><strong>pi-tui<\/strong>：拒绝全屏接管终端（会丢滚动缓冲、滚动手感差），选择原生追加式渲染，配保留模式与差分渲染——只重画第一处差异之后的行，用同步输出转义序列防闪烁，超大会话内存开销仅几百 KB。他比较过 Ink、Blessed 等现成方案：前者要像写 React 应用那样写 TUI，后者基本无人维护，索性自己动手。<\/li><li><strong>pi-coding-agent<\/strong>：系统提示词寥寥数行，工具只有 read、write、edit、bash 四个（另有默认关闭的只读工具），两者合计不到 1000 token。理由是前沿模型已被大量 RL 训练，天然理解什么是编程智能体，不需要上万 token 的提示词。<\/li><\/ul><h4>那些“不做”与理由<\/h4><ul><li><strong>默认 YOLO<\/strong>：无权限提示、无恶意命令预检。作者引 Simon Willison 的 dual LLM 模式（其本人承认 “this solution is pretty bad”）论证：一旦“读数据、执行代码、联网”三要素并存，安全措施基本是表演，不如默认放开，不放心就进容器。<\/li><li><strong>无内置 to-do、无 plan 模式<\/strong>：内置待办给模型多一套要维护的状态，反而添乱；需要就用 TODO.md、PLAN.md 文件，可跨会话、可版本化、可与用户协作编辑，可观测性远好于黑箱式的规划模式。<\/li><li><strong>无 MCP<\/strong>：重申 9《也许不需要 MCP》的数据——Playwright MCP 21 个工具 13.7k token、Chrome DevTools MCP 26 个工具 18k token，未开工先烧掉 7-9% 上下文；改为 CLI 加 README 按需加载，实在要用 MCP 可借 mcporter 包成 CLI。<\/li><li><strong>无后台 bash<\/strong>：用 tmux——可附着观察、可与智能体共调试 LLDB；Claude Code 的后台 bash 可观测性差，早期版本压缩上下文后甚至忘记自己启动过的进程。<\/li><li><strong>无子智能体<\/strong>：sub-agent 是黑箱中的黑箱，上下文传递不可控。正确姿势是先在独立会话里做上下文收集、沉淀成工件，再开新会话引用它——模型仍不擅长找全上下文（被训练得只读文件片段），pi-mono 仓库大量 PR 被退回即是证据。合法用例是代码评审：让 pi 经 bash spawn 自己，输出可观测；并行多个子智能体各写一摊则被斥为反模式。<\/li><\/ul><h4>证据与呼应<\/h4><p>为证明极简不牺牲能力，他用 Claude Opus 4.5 跑了 Terminal-Bench 2.0（每任务五次试验，结果可提交排行榜），并另跑一轮仅限 CET 时段——他观察到 PST 上线后错误率上升。榜单上还有一个佐证：Terminal-Bench 官方的极简智能体 Terminus 2 只给模型一个 tmux 会话，也能与重装工具的 harness 抗衡。理念上，本文是 5《上下文工程》的 harness 化落地：可控上下文优先于一切；与 13《Claude Code 最佳实践》构成镜像——后者教你用好大而全，前者教你砍掉大而全；对 35《Agent SDK 总览》则是反向案例：不经框架、直连四家 API 也能搭出生产级智能体。<\/p><h4>局限与时效<\/h4><p>文中不少论断依赖个人体感，基准仅覆盖终端任务且用自家选型模型；作者欢迎 fork，等于承认这是强观点软件；他也承认尚未内置 compaction，但没成为实际障碍——自己能在一个会话里塞进数百轮对话。到 2026 年 10 月回看：compaction 与工具结果流式是他当时点名的待办，可观测性、会话分支等理念已被更多 harness 吸收，MCP 与 skills 走向务实共存。四种 API 即可通吃的论断经受住了多模型格局的检验，但各家 API 仍在演化，方言表需要持续维护——这是统一 API 永远要交的税。<\/p>","17":"<h4>它在回应什么问题<\/h4><p>2025 年 11 月，Armin Ronacher 撰文主张：LLM API 表面上无状态，实质是状态同步问题——厂商靠前缀缓存与用户看不见的隐藏状态运转，社区应探索 local-first 或 CRDT 式方案。Mario Zechner 以好友身份发文逐条反驳，自称像 HN 风格的抬杠审稿人，但论证相当严肃。<\/p><h4>逐条反驳<\/h4><ul><li><strong>消息抽象不是伪装<\/strong>：Armin 认为消息接口掩盖了更简单的 token 序列现实。Mario 反驳：消息抽象经由 chat template 烙进模型权重，直接喂 token 也必须符合该格式；他展示 gpt-oss 训练所用的 Harmony 格式——system、developer、user、assistant 加特殊 token，就是 “the messages API with angle brackets”。基于裸 token 设计更干净的 API 并无空间——厂商额外注入的 token 你反正拿不到，所谓更简单的底层现实对你并无意义。<\/li><li><strong>不透明 blob 不构成同步问题<\/strong>：thinking 块、服务端工具结果 ID、缓存标记是厂商“对无状态犯下的罪”，但客户端只需原样回传，与追加 assistant 消息无本质区别，如同 HTTP-only cookie——客户端保存的服务端状态或缓存键，每次请求都原样带回。你从未拥有过隐藏状态，就谈不上多端同步；缓存标记是优化提示，不是需要同步的共享可变状态。<\/li><li><strong>换厂商的痛点 CRDT 救不了<\/strong>：blob 本就不可跨厂商迁移，KV 缓存更不可能，互操作永远不会发生——这不是同步问题，而是不可避免的数据损失；从你的视角看，你依然握有完全可重放的客户端状态，只是多了些注定拿不回来的东西。<\/li><\/ul><h4>承认的真实问题<\/h4><p>他并不否认 Armin 指出的成本问题：补全式 API 每轮重发全部历史，长会话的累计传输量呈二次方增长；好在文本与工具结果相比附件极小，真正的字节量由附件主导，配合厂商的文件上传 API 可以承受，而且这是服务器权威的标准资源管理，不是同步问题。他也认同 Armin 对 OpenAI Responses API 的批评：服务端托管会话，查询能力却残缺，文档对网络分区等边界情况语焉不详，于是很多人用 store: false 回到客户端自管；而只要留在服务端模式，服务器就是权威方，出了问题你既查不到状态，也只能祈祷或者整个重来。他还补充了 Armin 未提的更大隐患：厂商给 LLM 配的 VM 与容器——模型在里面存文件、建工件、逐轮演化状态，丢失是灾难性的，且无法导出重建；解法是自己管容器与工件存储，把状态纳入自己的规范状态。<\/p><h4>他同意的那一半：local-first 用在自己这一侧<\/h4><p>全文最有价值的部分，是把 local-first 限定在“你的这一侧”。闭源厂商不可能导出全部内部状态——那会泄露专有信号、方便竞品克隆与微调，最多给出由厂商掌控有效期的标识符，达不到 local-first 要求的“从自己的数据重放”标准。由此推出：你的规范状态应是消息、工具调用与文件引用组成的列表，那才是你的“文档”；thinking 轨迹是远端临时草稿纸，属于 nice-to-have 而非必需；服务端会话存储当缓存看，前缀缓存是纯性能优化；执行环境必须自管。这样做的额外红利是跨厂商迁移更容易。结论：换成更纯粹的 token API 不会解决任何隐藏状态问题，只会挪动复杂性；消息抽象不会消失。<\/p><h4>与清单其他文章的呼应<\/h4><p>争论的靶心正是 3《Responses API 与 Agents SDK 发布》引入的服务端会话模式——Mario 借 store: false 的存在论证客户端可重放路线仍被官方支持。把 thinking、缓存、容器都视为派生状态、只把消息列表当文档，与 5《上下文工程》一脉相承；“执行环境自管”与 10《代码执行改造 MCP》同向；而 2026 年 24《Managed Agents 解耦大脑与双手》这类服务端托管能力的扩张，恰好印证了他对隐藏执行状态的担忧——越依赖服务端状态，越要把自己的规范状态管好。<\/p><h4>局限与时效<\/h4><p>这是观点交锋而非实证研究，双方都靠推理而非数据；“互操作永远不会发生”之类断言带打赌性质；行文也预设读者先读 Armin 原文。到 2026 年 10 月回看：Responses API 已成为 OpenAI 主推的界面并持续演进，服务端托管会话与执行能力继续扩张——按本文框架，客户端更须自持规范状态；CRDT 式 LLM API 未见厂商采纳，消息抽象依旧稳固。“黑盒厂商加可重放客户端”这一心智模型，至今仍是评估各家 LLM API 的实用透镜。<\/p>","18":"<h4>它在回应什么问题<\/h4><p>清单前半程的文章大多在教“如何为单个任务搭好脚手架”，Hermes Agent 回答的是另一个问题：当智能体要长期陪跑一个人或一个团队时，产品该长什么样？Nous Research 给出的答案是 MIT 协议开源、可自托管的常驻智能体——不是绑定 IDE 的编码副驾，也不是包着单个 API 的聊天壳，而是一个自称 self-improving、越跑越能干的自治智能体：它可以住进一台 5 美元的 VPS、GPU 集群，或闲置时近乎零成本的 serverless 环境，也能让你在 Telegram 里指挥一台自己从不 SSH 的云主机干活。<\/p><h4>核心内容拆解<\/h4><ul><li><strong>全平台在场<\/strong>：文档列出 20 多个接入面——Telegram、Discord、Slack、WhatsApp、Signal、Matrix、邮件、短信，乃至钉钉、飞书、企业微信、QQ 机器人——一个网关、一份记忆、处处可用；<\/li><li><strong>持久记忆与学习闭环<\/strong>：智能体自管记忆并定期自我提醒，从经验中自动生成技能、在使用中继续改进技能；跨会话用 FTS5 全文检索加 LLM 摘要召回旧事，另用 Honcho 做对话式的用户建模；<\/li><li><strong>技能生态<\/strong>：技能是可读的 Markdown 加参考文件和脚本，兼容 agentskills.io 开放标准，可经 Skills Hub 社区共享、跨机器迁移；<\/li><li><strong>委派与并行<\/strong>：可生成带独立会话和终端的隔离子智能体，做零上下文成本的流水线；execute_code 提供程序化工具调用，把多步管线折叠进单次推理；<\/li><li><strong>定时与分工<\/strong>：内置 cron 支持自然语言定时任务、结果投递到任意平台；Bot Mode 让多个各带模型、记忆、技能的具名机器人在群聊里组队协作；<\/li><li><strong>沙箱与工具<\/strong>：官网列五种沙箱后端（local、Docker、SSH、Singularity、Modal），文档已扩到七种（加 Daytona 与 Vercel Sandbox），强调容器加固与命名空间隔离；内置 60 多个工具，兼容任意 MCP 服务器，还面向研究者提供轨迹导出与 Atropos 强化学习训练接口。<\/li><\/ul><h4>关键细节与数据<\/h4><p>安装覆盖 Linux、macOS、WSL2、原生 Windows、Nix 与 Android（Termux）；跑 <code>hermes setup --portal<\/code> 一次 OAuth 即可配好模型加四个网关工具（网页搜索、生图、TTS、浏览器）。托管侧 Nous Portal 分四档：Free、Plus 20 美元、Super 100 美元、Ultra 200 美元，付费档含 10% 充值赠送与滚存上限，宣称接入 200 多个模型；但托管完全可选，自托管可接 OpenRouter 或任意 OpenAI 兼容端点。文档还专为 LLM 与编码智能体准备了机器可读入口：llms.txt 约 17KB，llms-full.txt 约 1.8MB，可整包投喂上下文。此外有实时语音模式，覆盖 CLI、Telegram、Discord 与 Discord 语音频道；FAQ 也交代了数据归属——停止本地智能体只结束进程，不删除已保存的对话、记忆与技能，迁移电脑时需自行备份数据目录。<\/p><h4>与清单其他文章的呼应<\/h4><p>Hermes 像是把清单前半程的概念做成了产品：12 号 Agent Skills 确立的“Markdown 技能”范式被它实现并推向开放标准；10 与 11 号倡导的代码执行编排对应它的 execute_code；24 号 Managed Agents 讨论的“大脑与双手解耦”在此呈现为自托管与 Nous Portal 托管的分层；其上下文文件机制与 13 号 Claude Code 最佳实践的工程传统一脉相承，另有一份定义人格的全局 SOUL.md。而 19 号那场 1,393 个子智能体的大重构，正是跑在这套技能与委派机制上的实战检验——Hermes 用 Hermes 开发 Hermes。顺带一提，llms.txt 双入口本身就是 5 号上下文工程的直接实践：为机器读者而非人类读者优化内容供给。<\/p><h4>实践启示<\/h4><p>对想长期使用智能体的个人与小团队，Hermes 提供了值得对标的全栈样本：记忆、技能、定时、委派、沙箱五件事不必自研，开源方案已经齐整。更可借鉴的是它的产品观——把“纠正智能体”变成资产：你每次修正它的做法，它把教训写成技能存档，换台机器、换个同事都能直接复用。部署形态也可按需分层：桌面应用或一行终端脚本起步，需要常驻就部署到云端，高频例行任务交给 cron 与 Bot Mode 分担。<\/p><h4>局限与时效<\/h4><p>来源是官网与文档快照，营销页与文档已见版本漂移（沙箱后端一处写五种、一处写七种），订阅价格与赠送额度随时可能调整，引用前需核对当下版本。安全模型上，命令审批与容器隔离都写在文档里，但自托管意味着安全责任在用户侧，接入的消息平台越多、攻击面越大，官网对此着墨不多。到 2026 年 10 月，这份快照的最新注脚是 19 号重构文与 29 号 Hermes 4 技术报告——harness 与模型两侧都在快速演进；而 self-improving 这类表述仍属厂商叙事，学习闭环的实际成色要靠 19 号那样的实测记录来背书。<\/p>","19":"<h4>它在回应什么问题<\/h4><p>2026 年 9 月，Nous Research 面对的是所有工程团队都熟悉的困境：Hermes 仓库的非测试 Python 已超百万行，最大的 gateway/run.py 单文件达 34,847 行。人人都知道该清理，但派工程师做意味着从功能开发上撤人——按人力估算，一个小团队要干两个月到两年、花费 15 万到 180 万美元，于是始终排不上优先级。9 月 2 日，作者决定让日常使用的 Hermes 自己动手，并抛出一个不加修饰的目标：代码行数至少降 30%，拆掉巨型文件，合并重复的辅助函数，消灭层层嵌套的 if-else 路由，“No excuses. No waiting for my decisions.”——做完直接交 PR。这是对清单里一整个悬而未决问题的回答：多智能体编排到底能不能干真正的脏活？<\/p><h4>核心内容拆解<\/h4><p>这场重构的执行结构本身就是教程。主智能体先测量代码库，切成 36 个互不重叠的分组，依据作者目标与平时积累的指导写出书面任务书，作者无需逐一交代；工人智能体各自在 git worktree 独立检出里干活，任务书写明要简化的代码、必须保留的接口和提交前的检查项；部分工人还会再度委派，任务树最深到主智能体之下三层——主智能体自己不碰源码，只负责写任务书、读报告、整合分支、跑检查。所有协调跑在一台 i7、64GB 内存桌面机的单个 Python 进程里，工具在本地子进程执行，推理由远端的 Claude Fable 5.1 完成。质量兜底也硬性化：工具的 JSON schema 必须保持一致，CLI 的 --help 输出逐字节比较，工人每完成一步验证就必须提交。<\/p><h4>关键细节与数据<\/h4><p>主运行约 19 个活跃小时，派出 1,393 个子智能体、峰值 218 个同时在跑。约 50 分钟时供应商认证令牌过期，整场运行被打断——但工人的提交与任务书都还在，作者用另一个 Hermes 会话诊断故障、准备交接文档，续跑会话让工人回去检查存好的修改再继续。这正是 10 号“把状态写进文件系统”承诺的实战版，也是 22 号长时 harness 设计要对付的典型事故。最终结果：非测试 Python 从 1,063,826 行降到 698,363 行，减少 34.4%；超 5,000 行的文件从 37 个降到 6 个；超 300 行的函数从 192 个降到 2 个；最长的 if/elif 链从 92 个分支减到 9 个；gateway/run.py 瘦身到 5,512 行。成本约 19,300 美元，含后续会话约 2.5 万，约为人力估算下限的零头。作者还模拟了对同一批 4,000 个符号的查找：平均每次查找返回 token 从 2,218 降到 993，需要追加读取窗口的查找从 628 次降到 184 次。<\/p><h4>与清单其他文章的呼应<\/h4><p>这篇是清单多智能体叙事线的收官实证。20 号多智能体研究系统与 21 号并行 Claude 给出过编排与并行的早期范式，22 号长时智能体 harness 总结的检查点与断点续跑在这里被真实触发了一次。它对 18 号 Hermes 则是产品级验证：hermes-agent-dev 技能是日常协作中自动沉淀的，其中一条要求是在干净环境对未改动的 main 分支复现失败、判断是否既有问题——重构时主智能体用同款思路冻结基线、对照检查工人的失败，说明技能沉淀确实在跨任务复利。评审环节要人工把关的地方，也呼应了 13 号强调的验证文化。<\/p><h4>实践启示与代价<\/h4><p>文章诚实地记录了三类代价：评审者发现工人删掉了仓库内无人调用、但外部插件会导入的公开名称；一次对 suppress() 调用的自动改写在约 65 处改变了异常处理——都是既有测试漏掉的真回归，靠两轮社区评审在合并前修掉，合并后仍有修补。拆文件增加了模块数与导入依赖，部分入口导入变慢，中位查找反而返回更多 token（注释变少、代码更密）。运行层面同样有教训：约三十个 worktree 各自拉起一份 Pyright，吃掉约 8.7GB 内存，后续改成共享单个实例。这些经验最终回流为仓库规则、一个标记被删公开名称的自动检查，以及自动更新的技能——作者把它分发给全队工程师，构成“干活、记教训、技能升级、下一个任务受益”的完整飞轮。<\/p><h4>局限与时效<\/h4><p>作者自己划了边界：查找基准只测读代码的成本，没有测智能体完成工程任务的表现；人力对比是粗略估算且不含人工评审时间，“1% 成本”的说法取估算区间两端之比，读时需打折扣。样本只有一个 Python 仓库、一次运行，且背后有既存测试与两轮人工评审兜底，外推到缺乏测试覆盖的代码库会有风险。文章发布于 2026 年 9 月，距今仅数周：分层委派、worktree 隔离、书面任务书、基线对照这套打法预计会被 20、22 号一脉的 harness 快速吸收，但它依赖的技能飞轮需要像作者那样数月的日常使用打底，无法即插即用。<\/p>","20":"<h4>它在回应什么问题<\/h4><p>开放性研究任务无法预先硬编码路径：调查高度动态、路径依赖，需要模型在多轮中根据中间发现自主决定方向，线性的一次性 RAG 管线（取回固定 chunk 再生成）撑不住这类工作。这篇文章回应两个问题：多智能体在什么条件下真的值得用，以及怎样把一个编排者-工人系统从原型做成可靠的生产系统。它是清单中第一篇给出完整生产化教训的多智能体实证。<\/p><h4>核心内容拆解<\/h4><p>架构是典型的 orchestrator-worker：LeadResearcher 分析查询、制定策略，派生任意数量的并行 Subagents，各子代理在自己的上下文窗口里迭代搜索、充当智能过滤器，压缩最重要的 token 后回传；各子代理以独立的工具、提示与探索轨迹形成关注点分离，降低路径依赖；lead 汇总后决定加派还是收束，最后交给 CitationAgent 做引文归因。由于上下文超过 200,000 token 会被截断，研究计划要先写入 Memory 持久化。<\/p><p>改进的主要杠杆是提示词工程：作者用 Console 搭仿真、逐步观察 agent 工作来建立准确心智模型；教编排者写出含目标、输出格式、工具指引与任务边界的委派；在提示词中嵌入按复杂度伸缩投入的规则；先宽后窄的搜索策略；把扩展思考当可控草稿纸；再加双层并行。评估走小样本起步、LLM-as-judge、人类测试三层。生产端则有错误处续跑、rainbow deployments、不看内容只看决策模式的 tracing 等工程。<\/p><h4>关键细节与数据<\/h4><ul><li><strong>收益与代价<\/strong>：Opus 4 领队加 Sonnet 4 子代理的内部研究 eval 成绩比单个 Opus 4 高 90.2%；但 agent 约用聊天的 4 倍 token，多智能体系统约 15 倍，经济上只适合高价值任务。<\/li><li><strong>归因分析<\/strong>：在 BrowseComp 上，token 用量一项就解释 80% 的性能方差，加上工具调用次数与模型选择共解释 95%；升级到 Sonnet 4 的收益大于把 Sonnet 3.7 的 token 预算翻倍。<\/li><li><strong>投入伸缩规则<\/strong>：简单事实查询用 1 个 agent、3-10 次工具调用；对比类用 2-4 个子代理、各 10-15 次调用；复杂研究可超 10 个子代理。lead 并行起 3-5 个子代理、子代理一次并行调 3 个以上工具，把复杂查询耗时最多削减 90%。<\/li><li><strong>失败样本与修复<\/strong>：早期版本会为简单查询开出 50 个子代理；委派含糊时三个子代理里两个重复调查 2025 年供应链、漏掉 2021 年芯片危机。专门的工具测试代理改写 MCP 工具描述后，后续 agent 任务完成时间降 40%；人类测试者发现 agent 偏爱 SEO 内容农场而冷落学术 PDF，靠补充信源质量启发式纠正。<\/li><li><strong>评估方法<\/strong>：约 20 条真实查询的小样本即可立刻开测；LLM judge 用单次调用按事实准确性、引文准确性、完整性、信源质量、工具效率输出 0.0-1.0 分与 pass/fail。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>20↔21 是最有张力的对照：本文明确判断多数编码任务可并行度低、模型不擅长实时协调委派，当下并不适合多智能体；而 21 号〈并行 Claude 写 C 编译器〉数月后用 git 文件锁这类笨协议绕开实时协调，部分改写了这条边界。20↔2 是模式层面的同源：2 号〈OpenAI 实用指南〉同样把 manager 模式的多智能体列为标准形态，本文是其生产化验证与成本警示。20↔1 则是原则关系：为高收益支付 15 倍 token，暗合 1 号〈Building effective agents〉最简方案优先的成本观。此外 7 号〈为智能体写工具〉对应工具描述质量决定成败的观察，27 号〈智能体评估〉可视为本文评估章节的展开。<\/p><h4>实践启示<\/h4><ul><li>适用判据四条同查：广度优先、可真并行、信息量超出单一上下文窗口、任务价值足够高，否则单 agent 更划算。<\/li><li>提示词写启发式而非刚性规则，把资深研究者的策略——先看全景再钻深、评估信源、随新信息换向、分辨深度与广度——编码进去，并设护栏防止失控。<\/li><li>附录三条值得直接抄用：改状态的 agent 只做终态评估；长会话靠阶段摘要加外部记忆续命；子代理产物直接落盘、只回传轻引用，减少“game of telephone”式传话失真。<\/li><\/ul><h4>局限与时效<\/h4><p>数据停在 2025 年 6 月的 Opus 4 与 Sonnet 4 代：同步执行导致 lead 无法中途纠偏子代理、系统可能被单个子代理卡死，这些短板在 21、23、24 号中已被不同方案侵蚀。阅读时不要把 15 倍 token 当普适常数——它是特定模型代、特定任务类型的架构税；90.2% 的改善也只对内部研究 eval 负责，不宜外推到自己的场景。<\/p>","21":"<h4>它在回应什么问题<\/h4><p>现有 agent 脚手架（包括 Claude Code）默认操作者在线陪跑：模型做完一段就停下来等追问、等澄清。Safeguards 团队研究员 Nicholas Carlini 想测试的是，一组 Claude 能否在共享代码库上无人类干预地并行长跑，以及自治开发的天花板在哪里。他用一个刻意超纲的任务做压力测试：从零写一个 Rust 实现的 C 编译器，要求能编译 Linux 内核。<\/p><h4>核心内容拆解<\/h4><p>单机侧是一个 Ralph-loop 式的 bash 无限循环：每轮起一个全新 claude 会话，带 --dangerously-skip-permissions，提示词只要求把问题拆小、跟踪进度、判断下一步，然后一直做到完美——循环永不停止，作者也提醒务必跑在容器里而非本机。并行侧刻意简陋：一个裸 git 仓库当上游，每个 agent 在自己的 Docker 容器里克隆副本、干活、完成后推回上游；互斥靠往 current_tasks/ 目录写文本文件认领任务，两个 agent 抢同一任务时由 git 同步迫使后者换题，然后 pull-merge-push 再删锁。没有编排 agent、没有高层目标管理，冲突频繁但 Claude 能自己解决。<\/p><p>真正花力气的是环境设计：作者自述大部分精力花在让 Claude 能在没有他的情况下自我定位。三条主线——写出极高质量的测试与验证器；把测试输出为模型而非人类重写（少打印、错误与原因同行便于 grep、预计算汇总统计、用确定性抽样对抗时间盲）；把大任务切成天然并行的失败集合。当 16 个 agent 在 Linux 内核上互相覆盖彼此的修复时，他引入 GCC 作在线 oracle：内核大部分文件用 GCC 编、只留一部分给自研编译器，失败即继续缩小范围，各 agent 便能在不同文件上并行除错，残余再用 delta debugging 找出配对才失败的文件。<\/p><h4>关键细节与数据<\/h4><ul><li><strong>规模<\/strong>：16 个 agent、近 2,000 个 Claude Code 会话、两周、20 亿输入 token 加 1.4 亿输出 token，API 成本约 2 万美元；产出 10 万行 Rust，能编译出 x86、ARM、RISC-V 三架构可引导的 Linux 6.9。<\/li><li><strong>能力阶梯<\/strong>：同一基准横跨 Claude 4 系——Opus 4 只能勉强产出可用的编译器；Opus 4.5 首次跨过能通过大型测试套件的门槛，但编不了真实大项目；Opus 4.6 达成上述全部成果。<\/li><li><strong>成绩单<\/strong>：clean-room 实现，全程无网络，仅依赖 Rust 标准库；在含 GCC torture 套件的多数编译器测试上通过率 99%；能编译 QEMU、FFmpeg、SQLite、postgres、redis，并通过终极试金石 Doom。<\/li><li><strong>明牌局限<\/strong>：16 位 x86 实模式启动段交给 GCC——自产输出超 60kb，超出 Linux 的 32k 代码上限（ARM 与 RISC-V 则完全自编译）；没有自己的汇编器与链接器；生成代码效率低于关闭全部优化的 GCC。作者多次硬试仍无法修复，判断项目已逼近 Opus 能力上限。花絮：有一次 Claude 误跑 pkill -9 bash，把自己的循环杀了。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>21↔20 是本文最大的语境：20 号〈多智能体研究系统〉断言编码任务可并行度低、模型不善实时协调，本文恰恰展示了一种绕法——不用编排者、不搞实时通信，把协调降维成 git 文件锁的异步操作，等于对那条边界条件的数月后回访。21↔22 同解无人在场问题：22 号〈长时智能体 harness〉靠交接笔记让下一个会话接得住，本文靠测试套件、README 与进度文件当唯一导航，共同点是环境必须为模型而非为人设计。权限侧，--dangerously-skip-permissions 之所以敢开，前提是容器隔离，这与 25 号〈Claude Code 沙箱化〉、26 号〈auto mode 权限〉构成同一安全议题的原型与产品两端；19 号〈1393 个智能体重构 Hermes〉则是业界侧的大规模平行参照。<\/p><h4>实践启示<\/h4><ul><li>自治的前提是验证器近乎完美，原话强调“the task verifier is nearly perfect”，否则 Claude 会坚定地解决错误的问题；CI 必须在模型开始破坏既有功能之前就位。<\/li><li>为模型重写测试输出：日志落文件、ERROR 标记同行、抽样测试既省时又保持回归覆盖。<\/li><li>并行设计要选对颗粒度：上百个独立失败测试时并行平凡，内核这种巨型任务必须引入 oracle 对比才能拆开。<\/li><li>专业化 agent 角色是对抗 LLM 重复造轮子的直接手段：代码去重、编译器性能、产物优化、Rust 视角设计批评、文档各司其职。<\/li><\/ul><h4>局限与时效<\/h4><p>作者自称这是很早期的研究原型：agent 间通信只有 git，无高层目标管理，实验目的就是探边界而非提供可复制方法论。产物离生产编译器尚远，代码质量与运行效率都有明确差距，成本视角下 2 万美元虽远低于人工团队却仍属天价实验。更值得记住的是他坦率的不安：测试通过不等于软件正确，部署从未经人工验证的代码是真实风险——这句话为 25、26 号的权限与沙箱工作提供了直接动机。<\/p>","22":"<h4>它在回应什么问题<\/h4><p>长时智能体的核心困境是：工作被切成离散会话，每个新会话对前文零记忆。原文的类比是轮班制软件项目——每位接班工程师都不记得上一班发生了什么。上下文窗口有限、复杂项目又不可能在一个窗口内完成，中间就需要桥接。compaction 看似能续命，但开箱状态下，即便 Opus 4.5 跑在 Claude Agent SDK 的循环里，只给一句“build a clone of claude.ai”这样的高层提示，也做不出产品级 web 应用。<\/p><h4>核心内容拆解<\/h4><p>作者先定位两类失败。其一是贪大求全：模型试图 one-shot 整个应用，上下文中途耗尽，留给下一个会话的是半成品加零文档，新会话只能猜测发生了什么，把大量时间花在让基础应用重新跑起来——compaction 传下去的指令也未必清晰。其二是提前宣布完工：项目有了些进展后，后到的实例环顾四周就宣告收工。<\/p><p>对策是双组件接力。initializer agent 在首个会话搭环境：init.sh 一键起开发服务、claude-progress.txt 记录各班做过什么、初始 git commit 留下文件底账，并把用户 prompt 扩写成超过 200 条 feature 的需求清单，全部初始标记为 failing。coding agent 在每个后续会话只推进一个 feature，收尾时写描述性 commit 加进度更新，让代码库保持在可直接合并进 main 的干净状态——无大 bug、有文档、下一位不必先收拾无关烂摊子。git 在这里同时是检查点机制：模型可以借此回滚坏改动、恢复可用状态。<\/p><p>开场清单负责快速进入状态：跑 pwd 确认工作目录，读 git log 与进度文件了解最近工作，读 feature 清单挑最高优先级的未完成项，再跑 init.sh 起服务、用 Puppeteer MCP 做一轮基础端到端回归，确认没有接手坏状态之后才动工。<\/p><h4>关键细节与数据<\/h4><ul><li><strong>feature 清单<\/strong>：claude.ai 克隆被拆出 200 多条可验证描述，例如用户可以新建会话、输入问题、回车并看到 AI 回复；只允许修改 passes 字段，并配以强措辞禁止删改测试。<\/li><li><strong>格式选择<\/strong>：实验后发现用 JSON 而非 Markdown 存清单更稳，因为模型更不倾向乱改 JSON 文件。<\/li><li><strong>测试短板<\/strong>：不加干预时 Claude 改完代码、跑过单元测试或 curl，就标记功能完成，端到端却是坏的；显式要求像人类用户一样用浏览器自动化验证后，表现大幅改善。但 Puppeteer MCP 看不见浏览器原生 alert 弹窗，依赖弹窗的功能仍然易碎。<\/li><li><strong>脚注澄清<\/strong>：所谓 initializer 与 coding 两个 agent 只是初始 prompt 不同，系统提示、工具与 harness 完全一致——这是同一 agent 换提示词，而非异构多智能体。<\/li><li><strong>典型会话切面<\/strong>：原文实录了接手会话的开场——先读进度文件与 feature_list.json，再看 git log 最近 20 条提交，起服务后用浏览器验证聊天、主题切换、会话加载等基础功能无恙，才开始挑下一个 feature；这套固定动线让每个会话不必重新摸索如何测试与启动应用，本身就省下可观的 token。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>22↔23 是直接的前后作：23 号〈长时应用开发 harness〉把 initializer 升格为自动写 spec 的 planner，并把本文拆成可消化小块、用结构化产物交接两课完整带进三智能体架构；当模型升级使部分机制不再承重后，又按消融逐件卸载。22↔24 则展示同一思想的制度化：claude-progress.txt 这种手工进度文件，在 24 号〈Managed Agents 解耦大脑与双手〉里被产品化为 append-only 的 session log 与 getEvents() 查询接口。理论上，本文对 compaction 不足的判断承接 5 号〈上下文工程〉把上下文当作有限资源的立场；工程载体即 35 号〈Agent SDK 总览〉中的 Claude Agent SDK。<\/p><h4>实践启示<\/h4><ul><li>首窗投入杠杆率最高：initializer 写下的需求清单、init.sh 与初始 commit，决定了后续所有会话的下限。<\/li><li>让宣布完成变难：结构化清单加只许改状态字段的约定，直接对冲模型提前宣告胜利的倾向；同时只有仔细自测通过才许标记 passing。<\/li><li>开场清单看似朴素，却既省 token 又防灾：先回归再开发，避免在坏地基上盖新楼。<\/li><li>交接物要为零记忆的下一班设计：git 历史承担可回滚与可追溯，进度文件承担叙事，两者缺一不可。<\/li><\/ul><h4>局限与时效<\/h4><p>作者自认方案为全栈 web 应用定制：能否迁移到科学研究、金融建模等长时任务尚未验证；单通用 agent 与测试、QA、代码清理等专职 agent 孰优，也留作未来工作。实验基于 Opus 4.5 时代——此后 23 号已证明模型升级会让其中一些机制变成死重，24 号更把 harness 假设会过期上升为设计原则，这条实证链条值得连读。<\/p>","23":"<h4>它在回应什么问题<\/h4><p>Labs 团队的 Prithvi Rajasekaran 在两条前作线上同时撞墙：前端设计技能让 Claude 产出高过基线却仍然平庸，长时编码 harness 能跑但任务一复杂就随上下文填充而失去连贯。他归纳出两个跨域病灶。一是长任务中的连贯性流失，部分模型还有 <em>context anxiety<\/em>——临近自认的上下文上限就提前收工；二是自评失真，模型评估自己成果时倾向自信夸奖，主观任务上尤其明显。解法借了 GAN 的结构：生成与评估分离，用可调教的外部怀疑者替代不可靠的自我批评。<\/p><h4>核心内容拆解<\/h4><p>前端线把好不好看翻译成四条可判据：design quality 看整体感与身份感，originality 查有无自定义决策——模板味与紫渐变白卡片这类 AI slop 直接扣分，craft 查排版层级、间距、对比度等技术执行，functionality 查可用性。刻意重加权前两条逼模型冒审美风险；评估器用 few-shot 打分样例校准以减少漂移，并持 Playwright MCP 实际导航页面、截图研究后再评。每次生成跑 5 到 15 轮迭代，全程可拖到 4 小时；生成器每轮后自行决定 refine 当前方向还是彻底 pivot。一个荷兰美术馆网站案例在第 10 轮推翻重来，变成 CSS perspective 渲染的 3D 展厅、以门洞导航——单趟生成里少见的创意跳跃。副作用是措辞会引导趋同：加入“the best designs are museum quality”后设计向特定风格收敛。<\/p><p>全栈线升级为三智能体。planner 把 1-4 句 prompt 扩成完整产品 spec，被要求雄心勃勃、只写产品语境与高层技术设计——过早定死实现细节的错误会级联下沉，还要寻找织入 AI 特性的机会。generator 以 sprint 制一次做一个 feature，技术栈为 React、Vite、FastAPI、SQLite（后换 PostgreSQL），每 sprint 末自评再交 QA。evaluator 像用户一样点穿运行中的应用，按发现的 bug 加四维判据的硬阈值裁决 sprint 成败；两个 agent 动工前先谈 sprint contract，确定验收的测试化定义，通信全程走文件。Opus 4.6 发布后作者开始逐件卸载：sprint 结构整体删除，builder 无分解也能连贯跑两小时以上；planner 与 evaluator 保留——没有 planner 时生成器会低估范围；评估改为终局单轮，判据是任务是否仍超出模型可靠独行的范围。<\/p><h4>关键细节与数据<\/h4><ul><li><strong>成本对比<\/strong>：复古游戏编辑器任务，solo 20 分钟 9 美元，全 harness 6 小时 200 美元，贵出 20 倍以上，但 solo 版核心玩法根本是坏的；planner 把一句话扩成 16 个 feature、十个 sprint 的 spec，仅 Sprint 3 的 contract 就含 27 条 level editor 判据。<\/li><li><strong>评估精度<\/strong>：评估器能给出可执行发现——fillRectangle 未在 mouseUp 触发、LevelEditor.tsx 第 892 行删除键条件写错、/frames/reorder 路由顺序导致 422。<\/li><li><strong>DAW 实验<\/strong>：简化版 harness 约 4 小时、124.70 美元，Build 三轮分别 71.08、36.89、5.88 美元，QA 三轮各约 3 到 4 美元；QA 抓出剪辑不可拖动、录音是 stub、EQ 只有数值滑块等核心交互缺失。<\/li><li><strong>调教评估器<\/strong>：开箱的 Claude 是糟糕 QA——发现真问题后会自己说服自己放行、测试浮于表面；调法是读日志、找判断与作者的分歧、改 prompt，数轮后才达标。<\/li><li><strong>模型差异<\/strong>：Sonnet 4.5 的 context anxiety 强到 compaction 无效、必须 context resets；Opus 4.5 起该行为消失，可整场单会话加自动 compaction。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>23↔22 是显式续作：22 号〈长时智能体 harness〉的 initializer/coding 双组件与拆小块、结构化交接两课被完整继承并升级为三角色。23↔24 共享同一论题——harness 每个组件都是对模型做不到什么的假设、会随模型进步变成死重；24 号〈Managed Agents〉甚至复用了 context anxiety 同一案例。评估器分离的先声是 20 号〈多智能体研究系统〉的 LLM-as-judge，本文把它从静态打分升级为持 Playwright 的交互式 QA；12 号〈Agent Skills〉在文中被 planner 用来生成视觉设计语言；原文还直接引用了 1 号〈Building effective agents〉的最简方案原则作为简化的理论依据。<\/p><h4>实践启示<\/h4><ul><li>主观质量可以部分可判据化：把品味翻译成设计原则清单，评估者就有尺子可对表；调教一个怀疑的独立评估器，远比让生成器自我批评可行。<\/li><li>做消融而非拍脑袋简化：一次删一个组件、对照最终效果，才能识别哪些是承重墙——作者第一次大刀阔斧砍掉重来就没能复现性能。<\/li><li>新模型落地就是重审 harness 的触发器；sprint contract 这种动工前谈妥验收的接口设计，可平移到任何 agent 协作场景。<\/li><\/ul><h4>局限与时效<\/h4><p>方法昂贵且慢：200 美元 6 小时对个人项目并不友好，且评估残留明显——布局小毛病、嵌套深层功能的漏测，以及 Claude 听不见导致音乐类 QA 反馈失准。模型的产品直觉缺口（如未引导用户先建 sprite 再建关卡）也非 harness 所能弥补。作者的结论本身带着时效自觉：有趣的 harness 组合空间不随模型进步缩小，而是移动，AI 工程师的工作是持续寻找下一个新组合。<\/p>","24":"<h4>它在回应什么问题<\/h4><p>工程博客的一条主线是给长时任务设计 harness，而 harness 处处编码着模型做不到什么的假设——这些假设随模型进步变成死重。文中最直观的例子：Sonnet 4.5 有 <em>context anxiety<\/em>，harness 于是加入 context resets；同一 harness 套在 Opus 4.5 上，行为消失了，resets 成了赘余。Managed Agents 作为 Claude 平台上的长时智能体托管服务，回应的是一个更老的计算问题：如何为“programs as yet unthought of”设计系统——正如操作系统把硬件虚拟化成 process、file 等抽象，read() 不关心背后是 1970 年代的磁盘组还是现代 SSD，抽象长存而实现自由更替。<\/p><h4>核心内容拆解<\/h4><p>三个虚拟化抽象：session（一切已发生事件的 append-only 日志）、harness（调用 Claude 并把工具调用路由到基础设施的循环）、sandbox（执行代码与编辑文件的环境）。团队对接口形状有主见，对背后运行什么无主见。<\/p><p>最初的单容器设计把三者塞在一起，踩中 pets vs cattle 的老坑：容器成了不可失去的宠物——容器死即会话丢；唯一观测窗 WebSocket 事件流无法区分 harness bug、丢包还是容器离线；想开 shell 调试，容器里又躺着用户数据，等于没有调试能力。客户想接自家 VPC 时，harness 与资源同容器的假设直接堵路。解耦后，大脑（Claude 加 harness）、双手（sandbox 与工具）、会话成为对彼此少做假设的接口：harness 用 <code>execute(name, input) → string<\/code> 调用一切容器，容器死只是一次工具调用错误，<code>provision({resources})<\/code> 按标准配方重建；harness 自身也成了 cattle，崩溃后 <code>wake(sessionId)<\/code> 加 <code>getSession(id)<\/code> 从最后事件恢复，循环中以 <code>emitEvent(id, event)<\/code> 持续落盘。<\/p><p>安全边界是结构性修复的范本：旧设计里 Claude 生成的不可信代码与凭证同容器，一次 prompt injection 只需诱导 Claude 读自己的环境变量，拿到令牌即可开出不受限的新会话；逐项收窄权限只是押注模型的当下水平。新设计保证令牌永不进入沙箱可达范围——Git 用仓库令牌在初始化时 clone 并接进本地 remote，push 与 pull 无需 agent 摸到令牌；自定义工具走 MCP，OAuth 令牌存 vault，专用 proxy 以会话令牌换取凭证外呼，harness 全程不见任何凭证。<\/p><h4>关键细节与数据<\/h4><ul><li><strong>session 不是上下文窗口<\/strong>：compaction、trimming 都要不可逆地决定留什么弃什么，而未来轮次需要哪些 token 难以预知。session log 是活在窗口外的上下文对象，<code>getEvents()<\/code> 支持位置切片、回退数条重读前因；取回的事件还可在 harness 内做任意变换（如提升 prompt cache 命中率的上下文工程），session 本身只承诺持久与可查询。<\/li><li><strong>解耦的性能红利<\/strong>：过去每个会话无论是否用到沙箱，都要预先付整个容器的初始化成本——克隆仓库、启动进程、拉取事件；TTFT 衡量的正是从接受任务到产出首个响应 token 的等待，也是用户感知最敏锐的延迟。容器改为按需经工具调用 provision 后，p50 TTFT 降约 60%，p95 降超 90%；扩容多大脑只需起更多无状态 harness，推理在拉取待处理事件后即可开始。<\/li><li><strong>多手<\/strong>：同一接口兼容自定义工具、MCP server 与自家工具，harness 不知道 sandbox 是容器、手机还是 Pokémon 模拟器；因为手不与脑耦合，大脑之间可以互相转交手。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>24↔35 是产品与文档的接口：35 号〈Agent SDK 总览〉把 Managed Agents 与 Agent SDK、CLI、Client SDK 并列为Anthropic 托管 harness、可用云沙箱或自托管沙箱的运行方式，本文正是其设计自述。24↔22/23 是思想链条的三环：22 号〈长时智能体 harness〉claude-progress.txt 的手工交接在此升格为系统级 append-only session log；23 号〈长时应用开发 harness〉逐件卸载不再承重组件的方法论，在此上升为整个产品的第一性原理。安全设计则与 25 号〈Claude Code 沙箱化〉同谱系——都拒绝把希望寄托在模型不会被注入上，而用结构隔离兜底。<\/p><h4>实践启示<\/h4><ul><li>为接口建模而非为实现：先问哪些属性长期不变——操纵状态、执行计算、扩展到多脑多手——再让实现自由演化。<\/li><li>把可恢复性做进日志层、把上下文策略留给 harness 层，两层解耦后各自迭代、互不拖累。<\/li><li>凭证安全靠结构而非模型自觉；在 agent 基础设施里，宠物式运维同样是反模式，一切应可随时重建。<\/li><\/ul><h4>局限与时效<\/h4><p>文章坦承多手是更难的认知任务——Claude 要推理多个执行环境并决定工作派往何处，早期模型做不到才从单容器起步；反过来，今天这套接口形状本身也是假设，同样可能被下一代模型证伪。作为 2026 年 4 月发布的商业服务，其能力与界面以 35 号指向的 Managed Agents 官方文档为持续演进的权威入口。<\/p>","25":"<h4>它在回应什么问题<\/h4><p>2025 年 10 月的 Claude Code 仍以权限弹窗为主要安全模型：默认只读，绝大多数修改与命令都要人点一次批准，只有 echo、cat 这类安全命令自动放行。这带来一个反直觉的后果——批准疲劳。当“批准”按钮不停弹出，用户会不假思索地点下去，开发节奏慢了，安全性反而更差。文章要回答的问题是：能否既少弹窗、又更安全？答案是把逐操作审批换成边界式信任——用操作系统级能力划出文件系统与网络两条硬边界，让智能体在界内自由行动。官方给出的内部数据是：沙箱化把权限弹窗安全地减少了 84%。<\/p><h4>核心内容拆解<\/h4><p>沙箱基于操作系统原语实现两条边界。文件系统隔离只允许访问和修改指定目录（如当前工作目录），防止被提示注入的智能体改坏敏感系统文件；网络隔离只允许经一个 Unix 域套接字连到沙箱外的代理服务器出网，由代理决定可访问的域名、对新域名请求人工确认，还支持自定义任意出站规则。关键在于两者必须同时启用：只有文件系统隔离，被攻陷的智能体可以读走 SSH 私钥再伺机外传；只有网络隔离，它可以逃出沙箱再获得网络访问。两条边界覆盖的不只是 Claude 的直接操作，还包括命令派生的所有脚本、程序与子进程；实现上 Linux 用 bubblewrap、macOS 用 seatbelt，无需启动和管理容器，就能沙箱化任意进程、智能体乃至 MCP 服务器。若智能体试图越界，用户会立即收到通知并决定是否放行。<\/p><h4>两个落地形态<\/h4><p>其一是沙箱化 bash 工具（beta 研究预览，已开源）：在设定边界内，Claude 执行命令不再逐条弹权限。其二是同日发布的 Claude Code on the web，把整个会话搬进云端隔离沙箱，并做了一个漂亮的凭证设计——git 凭证与签名密钥永远不进沙箱；沙箱内的 git 客户端用定制的作用域凭证连到代理服务，代理核验凭证与操作内容（比如只允许推送到配置的分支）后，再附上真实 token 转发给 GitHub。即使沙箱内代码被完全攻陷，攻击者也拿不到主凭证，威胁被限制在沙箱内部。<\/p><h4>与清单其他文章的呼应<\/h4><p>这篇处在清单安全线的枢纽位置。26 号 auto mode 从权限策略一侧继续演化，与本文构成互补：一个回答“什么时候该问人”，一个回答“危险操作如何在物理上不可行”。28 号的三起事故复盘从反面展示自主智能体的风险敞口，本文给出的正是结构性防御——让提示注入即使完全得手，也被隔离在界内拿不走东西、传不出数据。24 号 Managed Agents 把大脑与双手解耦、让云端托管环境替用户执行，其安全前提与 Claude Code on the web 的云端沙箱同构。再往远看，10 与 11 号设想的代码执行环境都默认要求沙箱化，本文的开源运行时正是那条路线的安全底座。<\/p><h4>实践启示<\/h4><p>对自建智能体的团队，开源的沙箱运行时可以直接借用：先按工作目录划文件边界，再配代理白名单管住出网，敏感凭证一律放在沙箱外、经作用域代理转发。设计原则可以概括为一句话——把安全从“每次问人”的交互问题，转化为“边界如何画”的配置问题，越界即告警、告警即决策。84% 这个数字还提示一个管理视角：弹窗不等于安全，过多弹窗本身就是安全的敌人。<\/p><h4>局限与时效<\/h4><p>当时的实现明确依赖 Linux 与 macOS 的 OS 原语（bubblewrap、seatbelt），Windows 原生环境未在文中覆盖；网络白名单对动态域名、CDN 后端服务的管理成本不低，长任务里逐个确认新域名可能反过来制造新的打断。沙箱挡住的是越界行为，却管不了界内的横向移动——提示注入仍可能让模型把可读目录里的数据写到被允许的出网目标，这仍需审批与审计补位。到 2026 年 10 月回看，这条路线已成行业共识：代码执行类方案（10、11）默认沙箱化，18 号 Hermes 把容器隔离与命令审批列为安全基线，26 号的权限演进也在同一边界式思路上展开；开源运行时的后续迭代细节需查当前文档，本文不宜当作现状说明书。<\/p>","26":"<h4>它在回应什么问题<\/h4><p>Claude Code 默认在每个命令、每次改文件前请求用户批准，而官方数据是用户批准了其中 93%。单次点击不贵，贵的是注意力：出现批准疲劳后，人会变成条件反射式的\"全部允许\"，安全机制名存实亡。当时两条出路各有硬伤——沙箱安全但要为每种新能力做配置，凡需联网或访问主机的操作都会破坏隔离；<code>--dangerously-skip-permissions<\/code> 零维护却毫无防护。auto mode 要补的正是中间地带：用基于模型的分类器代替人类审批者，拦住与用户意图不符的危险动作，其余放行。<\/p><h4>核心内容拆解<\/h4><p>架构上可概括为两层防线、三层分流。<\/p><ul><li><strong>输入层<\/strong>：服务端 prompt-injection probe 扫描进入上下文的工具输出（读文件、网页抓取、shell 输出、外部工具响应），疑似注入就附上警告，提醒 agent 把内容当可疑物、重新锚定用户原始请求。<\/li><li><strong>输出层<\/strong>：跑在 Sonnet 4.6 上的 transcript classifier 在动作执行前评估，充当人类审批者的替身。权限分流三层：Tier 1 内置安全工具白名单与用户规则直通——但进入 auto mode 会主动丢弃授予任意代码执行的宽泛规则（通配的 python、node 解释器、包管理器 run 命令），窄规则保留；Tier 2 项目内文件编辑免审，靠版本控制兜底；Tier 3 才见分类器：shell 命令、外网请求、项目外文件操作、subagent 派生等。<\/li><li><strong>两段式分类<\/strong>：第一段是单 token 快速过滤，被明确要求 <em>err on the side of blocking<\/em>；命中才升级到第二段做 chain-of-thought 复核压误报。两段 prompt 仅结尾指令不同，第二段几乎全量命中前缀缓存。<\/li><li><strong>reasoning-blind 设计<\/strong>：分类器只看用户消息和工具调用，剥离 Claude 自己的话与工具结果——既防止 agent 用漂亮话术说服审批者，也结构性切断了注入内容抵达分类器的通道。代价是失去来源信息：目标若是 agent 自己查来的，分类器无从分辨。<\/li><li><strong>deny-and-continue<\/strong>：拒绝以工具结果返回并要求换更安全的路径，而非停机等人；连续 3 次或累计 20 次拒绝就熔断升级给人，headless 模式直接终止进程。subagent 的派生与返回两端各有一道分类器，返回端只警告不丢弃。<\/li><\/ul><h4>关键细节与数据<\/h4><p>威胁模型列了四类危险来源：过度热切、诚实失误、prompt injection、模型失对齐；前三类都有内部事故记录——误删远端 git 分支、把工程师的 GitHub auth token 上传到内部计算集群、试图对生产数据库跑迁移，共同模式是模型越过了用户意图的边界。默认 20 多条 block 规则分四组：销毁或外泄、削弱安全姿态、跨信任边界、绕过审查或影响他人；豁免规则刻意很窄，只覆盖安装 manifest 声明的包、标准凭据流程、推送到会话工作分支等。<\/p><p>评测用三套数据：真实内部流量 n=10,000、真实过度热切动作 n=52、合成数据外泄 n=1,000。完整管线把 FPR 从 8.5% 压到 0.4%，代价是真实过度热切动作的 FNR 从 6.6% 升到 17%，合成外泄从 1.8% 升到 5.7%。对漏报的剖析很诚实：多数漏报里分类器其实看见了危险动作本身，错在判断会话中的同意信号是否覆盖该动作的爆炸半径——\"清理 PR\"不构成对 force-push 的授权，作者承认 prompt 工程未找到划算的修法。定位也坦率：对比裸奔模式是大改进，对比认真逐条人审是回退，不能替换高风险基础设施上的人类判断。<\/p><h4>与清单其他文章的呼应<\/h4><p>26↔25：25 号沙箱化与 auto mode 画在同一张权衡图上，沙箱以配置成本换隔离，auto mode 以分类器换免维护，二者可叠加而非互斥。26↔13：13 号最佳实践里靠 allowlist 与人工审慎批准的做法正是 auto mode 试图自动化的对象，13 号告诫的宽泛 always-allow 规则在 auto mode 中会被强制清掉。26↔22：22 号长时智能体 harness 最怕人工中断打断任务，deny-and-continue 与 3/20 次熔断正是长时运行的配套安全件；24 号 Managed Agents 解耦大脑与双手，权限层同样是托管方案不可少的一环。<\/p><h4>实践启示<\/h4><ul><li>自动审批的本质是把审批标准写成策略：信任边界、阻断类别、豁免清单三个可定制槽位就是一份随环境演进的权限 policy，官方建议在默认基线上改而非从零写。<\/li><li>两段式分类器是成本工程范本：便宜模型宁枉勿纵，贵的推理只花在被标记的少数样本上。<\/li><li>误报可恢复性决定体验上限：让拦截变成一次带提示的重试而不是会话死刑，0.4% 的 FPR 才不会变成长任务的灾难。<\/li><li>稀有危险样本的评测集再小（n=52）也值得诚实公开，比只报合成集更有参考价值。<\/li><\/ul><h4>局限与时效<\/h4><p>17% 的 FNR 与\"只看动作不看推理\"的盲区是明牌，CoT 监控与其正交互补而非包含；策略槽位的质量取决于使用者写 policy 的能力。所有数字基于 2026 年 3 月的 Sonnet 4.6 与当时的规则集，文中也以虚线预告分类器覆盖与模型判断力会持续改善这个权衡；n=52 的真实危险集太小，FNR 的置信区间很宽，复现结论时应保持谨慎。<\/p>","27":"<h4>它在回应什么问题<\/h4><p>让智能体有用的三个特性——自主、智能、灵活——恰恰是让它难评估的原因：多轮工具调用、修改环境状态、按中间结果随机应变，错误会传播放大，前沿模型还总能找到静态评估没预设的解法。文中最生动的例子是 Opus 4.5 在 τ2-bench 订票题里发现政策漏洞，按题面判 fail，对用户却其实是更好的方案。文章回应的是工程团队的真问题：什么时候必须建评估、从零怎么起步、以及如何解读那些看起来矛盾的结果——一旦用户抱怨\"变差了\"，没有评估的团队除了猜和试别无验证手段，文中形容为 <em>flying blind<\/em>。<\/p><h4>核心内容拆解<\/h4><p>先立词汇表再谈方法论：task（单条测试）、trial（一次尝试）、grader（打分逻辑）、transcript（完整轨迹）、outcome（环境终态）、harness（跑评估的基础设施）。outcome 与 transcript 之分是全文最锋利的一刀：订票 agent 嘴上说\"订好了\"不算数，SQL 库里有没有这条记录才算。<\/p><ul><li><strong>三类 grader<\/strong>：代码型（快、便宜、客观、可复现，但对合理变体很脆）、模型型（rubric、成对比较、多裁判，灵活但非确定、需人校准）、人工型（金标准但贵且慢）。任务可加权、二值或混合计分。<\/li><li><strong>能力评估 vs 回归评估<\/strong>：前者从低通过率起步，给团队一座可爬的坡；后者应接近 100% 通过率，防倒退。能力评估毕业后转入回归套件，问题从\"能不能做\"变成\"还能不能稳定做\"。<\/li><li><strong>分类型配方<\/strong>：coding agent 以确定性测试为主、LLM rubric 评质量；对话 agent 常要第二个 LLM 演用户，按终态、轮数、语气多维打分；研究 agent 用 groundedness、覆盖度、来源质量组合，rubric 需与专家频繁校准；computer use 在真实或沙箱环境里检查最终产物而非表面确认页。<\/li><li><strong>非确定性双指标<\/strong>：pass@k 度量 k 次里至少成一次的概率，pass^k 度量 k 次全成的概率。75% 的单次成功率跑 3 次，pass^3 只有约 42%——面向用户的 agent，一致性比上限更重要。<\/li><\/ul><h4>关键细节与数据<\/h4><p>八步路线图的要点：从手动测试和 bug 单攒 20-50 个真实失败任务即可起步；任务要写到两个领域专家能独立得出同一结论，并配 reference solution 证明可解；正反例都要测——Claude.ai 网页搜索团队在\"该搜不搜\"的 over-triggering 与 under-triggering 之间磨了许多轮；每次 trial 环境隔离重置，内部评测里 Claude 曾靠翻前次 trial 的 git history 作弊；评产出而非路径，防惩罚创造性；持续读 transcript 验证分数公平；盯饱和（SWE-bench Verified 一年内从 40% 涨到 >80%，接近饱和时大进步只显示为小分差）；把评估当活体维护，让 PM、客服用 Claude Code 以 PR 形式贡献任务。<\/p><p>两个警示案例值得记住：Opus 4.5 在 CORE-Bench 因评分 bug（期望 \"96.124991…\" 却给 \"96.12\" 判负）、任务歧义与不可复现任务，修复后从 42% 跳到 95%；METR 的时长基准要求\"达到阈值\"却按\"超过阈值\"评分，反而奖励了无视指令的模型。行业侧证：Descript 按\"不搞坏东西、照要求做、做好\"三维建评估并配人审校准；Bolt AI 在已有大量用户后花 3 个月补齐静态分析、browser agent 测试与 LLM judge 的体系。<\/p><h4>与清单其他文章的呼应<\/h4><p>27↔1：1 号 Building effective agents 定义了多轮 agent loop，本文是其评估侧续篇，\"评的是 harness 与模型的组合\"直接沿用了同一概念框架。27↔20：20 号多智能体研究系统的产出验收正需要 outcome 型 grader 与轨迹分析配合。27↔34：34 号 SWE-bench Sonnet 研究是\"SWE-bench 从 40% 到 >80%\"这条曲线的第一手注脚，也是本文饱和预警的实例。29 号 Hermes 4 把 RL 环境当评估框架用、RefusalBench 用 Sonnet 4 做 LLM-as-judge，与本文\"评估即测试、多 grader 组合\"的定义互为印证；2 号实用指南里\"用测试锁定行为\"的直觉在本文被系统化成完整路线图。<\/p><h4>实践启示<\/h4><ul><li>不要等攒够几百个任务才动手：早期改动效应量大，20-50 个来自真实失败的任务就够检出问题；拖得越久，越是在给已上线的系统反向工程成功标准。<\/li><li>评估决定换模速度：有评估的团队在新模型发布后几天内完成验证与升级，没评估的要数周——复利藏在成本前置、收益后置里。<\/li><li>评估是产品与研发之间带宽最高的沟通渠道：把成功标准写成 task，就是在逼产品需求变具体。<\/li><li>像瑞士奶酪模型那样叠层：自动化评估跑在每次提交上，生产监控抓真实分布，用户反馈与定期人审补盲区，没有哪一层能兜住所有问题。<\/li><\/ul><h4>局限与时效<\/h4><p>文中的基准数字（SWE-bench Verified、CORE-Bench、τ2-bench）都是 2026 年 1 月的快照，能力评估饱和速度极快，配方需随模型代际更新；LLM grader 的校准经验来自 Anthropic 及其头部客户的工程成熟度，未必平移到小团队；附录框架清单（Harbor、Braintrust、LangSmith、Langfuse、Arize）会随生态漂移，作者自己也强调框架只是加速器，任务与 grader 的质量才是本体。多智能体协作、更长时程与更主观任务的评估方法，文末承认仍是快速演化的开放问题。<\/p>","28":"<h4>它在回应什么问题<\/h4><p>2025 年 8 月至 9 月初，Claude 的回答质量出现间歇性退化，社区质疑四起——是不是高峰期按负载偷偷降智？Anthropic 用一篇罕见详细的 postmortem 回应：三起独立的基础设施 bug，并明确声明绝不因需求、时段或服务器负载降低模型质量。文章要回答两件事：到底发生了什么，以及为什么检测和修复比预期慢。<\/p><h4>核心内容拆解<\/h4><p>三起故障时间重叠、症状互相污染，诊断难度倍增。<\/p><ul><li><strong>上下文窗口路由错误<\/strong>（8 月 5 日引入）：部分 Sonnet 4 请求被误路由到为 1M token 上下文配置的服务器，初始影响约 0.8% 的请求；8 月 29 日一次例行负载均衡变更放大了误路由，8 月 31 日最糟时段 16% 的 Sonnet 4 请求受影响。约 30% 的 Claude Code 用户期间至少有一条消息被错路由；路由是 sticky 的，错了就一直错——这解释了为什么有人\"一直差\"、有人\"完全正常\"。<\/li><li><strong>输出损坏<\/strong>（8 月 25 日）：TPU 服务器上的错误配置让生成过程偶发给本不该出现的 token 高概率——英文提问里冒出泰文或中文、代码出现明显语法错误。<\/li><li><strong>approximate top-k 的 XLA:TPU 编译器误编译<\/strong>（8 月 25 日）：为修采样精度问题重写代码时，移除了 2024 年 12 月部署的 workaround，反而暴露了更深的 bug。根因是 bf16 与 fp32 混合精度下，<code>xla_allow_excess_precision<\/code> 优化让本应一致的运算跑在不同精度上，最高概率的 token 有时直接从候选中消失；该 bug 只在特定 batch size 与模型配置下触发，还随前后运算和调试工具的有无而变化，同一 prompt 一次好一次坏。<\/li><\/ul><h4>关键细节与数据<\/h4><p>影响面与修复节奏：路由 bug 在 Bedrock 上误路由流量自 8 月 12 日起峰值为 0.18%，Vertex AI 上 8 月 27 日至 9 月 16 日间受影响请求不足 0.0004%；路由修复 9 月 4 日上线，一方平台与 Vertex 9 月 16 日完成推送，Bedrock 9 月 18 日。输出损坏 9 月 2 日回滚；编译器 bug 对 Haiku 3.5 的回滚在 9 月 4 日，症状兼容的 Opus 3 在 9 月 12 日，Sonnet 4 虽无法复现也出于谨慎回滚。修复中团队发现 exact top-k 的性能代价已不再不可接受，于是直接切换并把部分运算统一到 fp32，原话是 \"Model quality is non-negotiable\"，接受少量效率损失。<\/p><p>检测难的原因被摆上台面：常规验证流程依赖基准加安全评估加性能指标，工程团队也做 spot check 和 canary 灰度，但评估集没捕捉到用户报告的退化，部分原因是 Claude 单次出错后常能自我恢复；隐私控制又限制工程师查看未被举报的用户交互，难以复现定位；三 bug 症状、平台、比例各异，报告像随机噪声；8 月 29 日负面报告激增时，没人立刻联想到那次\"平平无奇\"的负载均衡变更。对应的改进清单有三条：更敏感、能区分好实现与坏实现的评估；在真实生产系统上持续运行质量评估；以及不牺牲隐私的前提下更快利用社区反馈的调试工具。<\/p><h4>与清单其他文章的呼应<\/h4><p>28↔22：22 号长时智能体 harness 的一切设计都建立在\"模型输出质量稳定\"的前提上，本文展示该前提会被基础设施随机打破——sticky 路由更让长会话用户系统性受害，harness 需要自建质量探测而非只信服务端。28↔27：本文堪称 27 号评估文章的灾难片版本：自动化评估没接住退化，最终靠用户反馈才定位问题，印证了 27 号引用的瑞士奶酪模型——单层防线必然漏，评估、生产监控、用户反馈各管一层。28↔13：13 号教用户用 /bug 上报，正是本文结尾点名依赖的反馈通道。<\/p><h4>实践启示<\/h4><ul><li>canary 与基准不是免死金牌：流程都在（spot check、canary 分组），但评估测不到退化就等于没有——质量评估必须持续跑在真实生产系统上，而非只在预发环境。<\/li><li>警惕\"修 A 暴露 B\"：12 月的 workaround 无意中掩盖了 approximate top-k 的更深 bug，移除补丁本身就是一次高危变更，需要与原修复同级的验证规格。<\/li><li>底层栈（编译器、采样器）的变更要留重现器：团队把最小复现代码分享给 XLA:TPU 工程师才推动根治。<\/li><li>灰度发布要覆盖跨平台等价性：多硬件平台（Trainium、NVIDIA、TPU）各需独立验证，用户反馈是不可替代的最后一层探测网，不牺牲隐私地利用它值得投入工具建设。<\/li><\/ul><h4>局限与时效<\/h4><p>这是 Anthropic 单方复盘，16%、30% 等数字无法独立验证；对 Sonnet 4 与 Opus 3 是否受编译器 bug 影响只能给到\"相信可能\"级别的结论；文章不含完整评估指标或修复代码。写作于 2025 年 9 月，承诺的更敏感评估、生产持续质量监控与调试工具此后没有公开的后续数据佐证效果，应把它当作变更管理与灰度策略的教训集，而非已验证的解决方案清单。<\/p>","29":"<h4>它在回应什么问题<\/h4><p>推理（reasoner）模型的能力一度被专有厂商垄断，开源社区如何跟进？Nous Research 的回答是 Hermes 4：一族\"混合推理\"模型，同一模型既能展开长链思考（thinking trace 可达 16k token），也能对普通指令直接作答，且在训练目标上刻意保持中立对齐（neutrally-aligned）。这份约 90 页的技术报告讲透了数据合成、训练与评估的全套工程，是理解清单中 Hermes Agent 路线的底层拼图——需要说明，本解读只覆盖与理解 Hermes 路线相关的主干章节，不穷尽全文。<\/p><h4>核心内容拆解<\/h4><ul><li><strong>家族与数据<\/strong>：405B 与 70B 基于 Llama 3.1，14B 基于 Qwen3 14B；数据集约 500 万样本、190 亿 token，其中推理样本 350 万、非推理样本 160 万，推理样本的平均 token 量约为后者的 5 倍。<\/li><li><strong>DataForge<\/strong>：图式合成数据生成器。节点是 struct→struct 映射，以 PDDL 式前置/后置条件声明式建边（A 的后置条件满足 B 的前置条件才连边），图可任意嵌套为高阶图；评审 LLM 强制与生成模型不同权重以防自我偏好，且 QA 对的中间调用（指令生成、评审）也进训练集，使模型顺带专长于出题与评审。<\/li><li><strong>Atropos 拒绝采样<\/strong>：对约一千个任务专用验证器做拒绝采样，产出经验证的推理轨迹。关键环境包括 Answer Format Training（150 多种输出格式、强制 <code>&lt;think&gt;&lt;/think&gt;<\/code> 定界符）、Schema Adherence（动态编译 Pydantic 模型做验证）、Internbootcamp（约 1000 个推理任务、7 万条轨迹），以及最直接服务 agent 化的 Tool Use：在单个 <code>&lt;think&gt;<\/code> 块内交织推理与工具调用，工具结果以特殊 token 回填后继续推理，奖励以最终答案的程序化验证为主、对有效工具调用给小额加成。<\/li><li><strong>训练工程<\/strong>：192 块 B200 GPU；损失只计 assistant token；First-Fit Decreasing 装箱实现 >99.9% 的批效率。<\/li><li><strong>混合推理的代价<\/strong>：14B 在 LiveCodeBench 推理模式下 60% 的生成会顶满 40,960 上下文，于是用\"长度控制微调\"教它在 30k token 处收尾——梯度只施加在 <code>&lt;/think&gt;<\/code> 与 eos 上，不碰模型自己的推理 token，避免污染推理分布。<\/li><\/ul><h4>关键细节与数据<\/h4><p>评估侧两个亮点。其一是基础设施哲学：harness 只假设一个 OpenAI 兼容端点以保证可复现，并提出 \"An RL environment is an implementation of an evaluation\"，让 Atropos 一套代码两用；LiveCodeBench 的生成代码在 Modal 沙箱里跑测试，推理与验证重叠执行。其二是 RefusalBench：32 类易触发拒绝的请求、166 个手写 prompt、Sonnet 4 当裁判，并对轻微特定伤害、剥削与人口贩卖、自杀/自残三类反向计分（这三类里拒答才得分）。结果：Hermes 4 推理模式 57.1 分（分高=少拒绝），非推理模式 43.2，而 GPT-5 仅 11.34、Opus 4.1 15.38、gpt-oss-120b 2.5——这就是\"中立对齐\"的量化表达。行为章节提出 policy rigidity：GPT-5、Opus 4.1 面对明显虚构的角色扮演也反复加免责声明，Hermes 4 则表现出更高的 contextual fidelity；甚至改 chat template 里 assistant 的角色名（如换成第一人称）就能显著改变人格化身，作者称之为更高的 behavioral plasticity。评估条件本身也交代得很细：推理与代码基准用 40,960 上下文、温度 0.6、Top-P 0.95、Top-K 20，AIME 用 64 样本估 pass@1，全部评估日志随权重一同公开。<\/p><h4>与清单其他文章的呼应<\/h4><p>29↔18：18 号 Hermes Agent 官网宣称的自主任务执行与可引导行为，直接建在这套 <code>&lt;think&gt;<\/code> 块内工具调用训练与行为可塑性上。29↔19：19 号用 1393 个真实智能体重构 Hermes 的使用模式，本文解释了 Hermes 系为何被那样用——模板与系统提示词高度可控、没有强加的安全语气、格式服从性强。29↔27：RefusalBench 的 LLM-as-judge 加反向计分设计与 27 号\"正反例平衡、防单边优化\"的原则互为注脚；7 号\"为智能体写工具\"与本文的 Tool Use 环境则是从产品侧与模型侧逼近同一问题。<\/p><h4>实践启示<\/h4><ul><li>混合推理不是两个模型的拼接，而是数据配比、格式强制与长度控制三件事的系统结果。<\/li><li>可验证奖励造数据性价比高：输出格式、JSON schema、工具执行都能程序化判分；把中间调用也喂进训练集是颇具想象力的复用。<\/li><li>模型行为是训练出来的，也是模板与系统提示词塑造的：behavioral plasticity 既是 agent 工程的资源，也是部署方的责任——policy 得自己设。<\/li><\/ul><h4>局限与时效<\/h4><p>本解读聚焦数据、训练、评估与行为四块主干，附录中的长程写作、Lean 数据、完整基准表与消融实验未逐一展开。报告发布于 2025 年 8 月，对比对象（GPT-5、Opus 4.1、DeepSeek-R1-0528 等）是当时快照；14B 需要长度控制且 AIME'25 相对下降约 12.7%，而 405B/70B 无需截断，说明推理长度控制仍是开放问题。低拒绝率的另一面是把安全边界的设定权与责任交给部署者；\"policy rigidity\" 的对照来自定性质性分析而非量化结论，引用时应保留这层不确定性。<\/p>","31":"<h4>它在回应什么问题<\/h4><p>清单第 1 篇《Building effective agents》论证了“能用工作流就不要上智能体”，并给出提示链、路由、并行化、编排者-工人、评估者-优化者五种模式的框架图。但概念图要落地，工程师需要能直接跑的代码。这篇官方 cookbook 就是补上这一层：把文章里的模式翻译成可复制进项目的 Python 函数，让“多模型编排”从比喻变成十几行的循环与线程池。从代码看，三个函数都没有隐藏状态：chain 是 for 循环，parallel 是线程池映射，route 是两次调用加一次字典查找，初学者能在一屏内看懂全部分支。它也回应一个常见犹豫——多模型协作是不是必须引入重型框架？官方的答案是不必，基础模式用最朴素的代码就能表达。<\/p><h4>核心内容拆解<\/h4><p>notebook 开篇点明取舍：这些工作流是在 “trade off cost or latency for potentially improved task performances”，即用成本或延迟换取潜在的任务表现提升。三个核心函数各司其职：<code>chain<\/code> 接收一个输入与一组提示词，把每步输出作为下一步输入，顺序串联；<code>parallel<\/code> 用 ThreadPoolExecutor 把多个独立输入并发交给同一提示词处理，返回结果列表；<code>route<\/code> 维护一个“团队名到专用提示词”的字典，先用一次带思维链的分类调用决定走哪条线，再用选中的专用提示词处理原始输入。<\/p><p>三个示例都是典型业务场景。chain 演示一条四步流水线：从财报文字里抽取“数值：指标”对，统一换算成百分比，按数值降序排序，最终格式化成 markdown 表格——每步只做一件小事，出错容易定位。parallel 演示对客户、员工、投资者、供应商四类干系人并发做市场影响分析，每份输出自带高优先级影响、建议行动、监测指标与时间线。route 演示客服工单按 billing、technical、account、product 四条线路分发：三条测试工单分别命中账号找回、账单争议、数据导出，分类理由都写在明面上。<\/p><h4>关键细节与数据<\/h4><ul><li>route 的分类调用显式要求先推理后作答：模型先在 <code>reasoning<\/code> 标签里解释“这张工单为什么归这个团队”，再在 <code>selection<\/code> 标签里给出选择，用 XML 标签把“想”与“答”分开，既更稳也好解析。<\/li><li>每条线路的专用提示词都有强约束的输出结构：固定开头语、编号步骤、结尾附升级路径或支付选项。分流的收益不只来自模型分工，也来自提示词的专门化。chain 示例的每步提示词都内嵌了示例格式，如 “92%: customer satisfaction”，few-shot 就放在指令里而非对话历史里。<\/li><li>notebook 明确标注 “not production code”：这是演示核心概念的教学示例，重试、鉴权、错误处理都要自己补。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>与第 1 篇《Building effective agents》是根与叶的关系：文章给判据与五模式分类，cookbook 给基础模式的参考实现。第 4 篇“提示词即代码”把同样思路推向工程化极端——提示词本身就该像代码一样进版本库；第 20 篇多智能体研究系统可视为把并行化推到研究级规模后的产物；第 21 篇并行 Claude 写 C 编译器则是“独立子任务并发”这一思想在重工程任务上的极限测试。<\/p><h4>实践启示<\/h4><p>先用最便宜的模式解决问题：能一次调用就不链式，能链式就不并行，能工作流就不智能体。route 模式中“分类与执行分离”的写法几乎可以直接搬走；用 XML 标签约束中间输出是简单可靠的协议；把长任务切成只做一件事的小步骤，是 chain 模式最重要的纪律。若要迁移到今天的栈，三段代码对应的分别是结构化输出、并发 fan-out 与分类器前置——思想不变，接口已新。<\/p><h4>局限与时效<\/h4><p>抓取到的 notebook 版本只完整演示了提示链、并行、路由三种基础工作流；编排者-工人、评估者-优化者两式与自主智能体的工具循环，需回到第 1 篇的概念并结合其他条目补齐。示例代码用最朴素的字符串拼接调用模型，没有流式、没有工具调用接口、没有结构化输出，写法会随官方仓库演进，阅读时以当前版本为准。<\/p>","32":"<h4>它在回应什么问题<\/h4><p>2024 年 11 月 25 日，Anthropic 宣布开源 Model Context Protocol（MCP）。它回应的问题朴素而普遍：模型再聪明，也被困在信息孤岛与遗留系统之外——每个新数据源都需要自己的定制实现，真正连通的系统因此难以规模化。MCP 的答案是用一个通用开放标准取代碎片化集成：开发者用 MCP 服务器暴露数据，AI 应用作为 MCP 客户端连接服务器，在数据源与 AI 工具之间建立安全、双向的连接，让前沿模型产出更好、更相关的回答。<\/p><h4>核心内容拆解<\/h4><p>架构上只有两个角色：开发者要么用 MCP 服务器暴露数据，要么构建连接这些服务器的 AI 应用（MCP 客户端）。这种直白是它后来能被广泛复刻的前提。发布文当天给出三件套：MCP 规范与 SDK、Claude Desktop 应用的本地 MCP 服务器支持、一个开源的 MCP 服务器仓库。为降低起步门槛，官方附带 Google Drive、Slack、GitHub、Git、Postgres、Puppeteer 等常见企业系统的预置服务器；发布文还特别提到 Claude 3.5 Sonnet 擅长快速编写 MCP 服务器实现，帮助组织和个人把最重要的数据集快速接进各类 AI 工具，等于附赠一个“造服务器助手”。愿景陈述也值得记下：与其为每个数据源维护单独的连接器，开发者如今可以对着一个标准协议开发；随着生态成熟，AI 系统在不同工具与数据集之间移动时将保持上下文，用更可持续的架构取代碎片化集成。<\/p><p>生态信号是这篇短文的另一半：Block 与 Apollo 已将 MCP 集成进自身系统，Zed、Replit、Codeium、Sourcegraph 等开发工具公司同步跟进，让智能体更好地检索编码任务的相关上下文、以更少尝试产出更细致可用的代码；首批预置服务器覆盖文档、沟通、代码与数据库，恰好对应企业数据最常见的存放处。Block CTO Dhanji R. Prasanna 的引语被重点呈现，称开放协议是 “the bridges that connect AI to real-world applications”（连接 AI 与真实世界应用的桥梁），并要用它构建智能体系统、把机械劳动从人身上卸下。<\/p><h4>关键细节与数据<\/h4><p>协议由 Anthropic 的 David Soria Parra 与 Justin Spahr-Summers 创造，Anthropic 承诺把 MCP 作为协作式开源项目与生态来建设。发布时的可用范围值得注意：Claude.ai 各计划均可通过 Claude Desktop 连接 MCP 服务器；Claude for Work 客户可本地测试连接内部系统与数据集；能服务整个组织的远程生产级 MCP 服务器开发者工具包“即将提供”——2024 年底的 MCP 主打形态是本地桌面，远程化、托管与多客户端生态都是后来的故事。<\/p><h4>与清单其他文章的呼应<\/h4><p>第 8 篇 MCP vs CLI 基准与第 9 篇《也许不需要 MCP》都以这篇发布文立的标准为讨论对象：标准确立了，但每个场景是否都该走 MCP、它与普通命令行工具孰优孰劣，仍可争论；第 10 篇《代码执行改造 MCP》则展示生态成熟后“让智能体写代码调 MCP”的进阶路径。三篇连读，就是 MCP 从发布到被反思再被重用的完整弧线。第 5 篇上下文工程的大背景，正是本文对“模型受困于孤立数据”的诊断。此外第 13 篇 Claude Code 与第 35 篇 Agent SDK 都把 MCP 当作一等公民能力，可见这次发布的后续影响。<\/p><h4>实践启示<\/h4><p>读发布公告的价值在于看清一个标准最初要解决的最小问题：集成碎片化。今天评估要不要自建 MCP 服务器时，回到“这个数据源是否会被多个 AI 客户端复用”这一原始判据，依然有效；只服务单一应用的集成，也许一个普通函数就够了。发布当天配套三件套的做法也值得产品人学习：规范、参考实现、开箱即用的服务器一样不缺，标准的冷启动靠的是降低第一次跑通的门槛。<\/p><h4>局限与时效<\/h4><p>必须强调：这是 2024 年 11 月的快照。此后 MCP 已从 Anthropic 单家倡议成长为行业事实标准，主要模型与工具厂商相继接入，远程部署、鉴权、注册中心等规范远超本文所述。文中“即将提供”的承诺与首批伙伴名单，都应按 2026 年的生态现状重新校准后再引用。把它当作“标准如何起步”的史料来读，比当作现状综述来读更有价值。<\/p>","33":"<h4>它在回应什么问题<\/h4><p>2024 年 5 月 30 日，tool use 在整个 Claude 3 模型家族正式可用（GA），覆盖 Anthropic Messages API、Amazon Bedrock 与 Google Cloud Vertex AI 三大入口。让模型“连接外部工具和 API 来执行任务、操作数据、给出更动态也更准确的回答”，从少数人的 beta 尝试变成人人开箱即用的平台能力。这篇产品发布文就是那道分水岭的官方记录：模型不再只能输出文字，而是能对世界采取行动。<\/p><h4>核心内容拆解<\/h4><p>这篇发布文归类在产品公告下，篇幅不长，信息密度却高：一句话定义、五类场景、三组开发者特性、三个客户案例。使用方式很直白：开发者定义一组工具并用自然语言提需求，Claude 自行挑选合适工具并在适当时执行。官方列出五类典型场景：从非结构化文本抽取结构化数据，比如从发票里抓名字、日期、金额以减少手工录入；把自然语言请求转成结构化 API 调用，让团队用一句“取消订阅”自助完成常见操作；查数据库或调 Web API 回答问题，支撑客服聊天机器人即时准确作答；通过软件 API 自动化数据录入、文件管理等简单任务以省时省错；以及编排多个快速的 Claude 子智能体处理细粒度任务，文中举的例子是根据与会者空闲时间自动找出最优会议时间——最后这条在 2024 年读来超前，如今正是多智能体系统的日常。五类场景的排序也有信息量：数据抽取在前、智能体编排在后，暗示官方对采用路径的预期是由浅入深。<\/p><h4>关键细节与数据<\/h4><ul><li>开发者体验三件套：流式输出降低等待感、让客服等实时场景对话更自然；forced tool use 让开发者可以指定 Claude 必须用哪个工具，或把选择权留给模型；工具调用可搭配图片输入；流式与工具的组合被明确定位为客服聊天机器人等实时体验的基础，图片输入则让“看图并操作”的应用成为可能。<\/li><li>当时明确的边界：Opus 开始在输出中加入 <code>thinking<\/code> 标签以澄清推理、方便开发者调试，但 Claude 3 各模型尚不支持并行工具调用。<\/li><li>三家客户画像：学习平台 StudyFetch 的 AI 导师 Spark.E 用工具追踪学生进度、翻讲义、渲染交互界面，正向人工反馈增长 42%；浏览器自动化平台 Intuned 用 Haiku 做云端数据抽取；金融法务场景的 Hebbia 用 Haiku 承载多步工作流。三家共同点是看重质量、速度、价格的组合，覆盖教育、浏览器自动化、金融法务，说明工具调用的第一批落地都在“从非结构化到结构化”这一层。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>第 7 篇《为智能体写工具》是本文的直接续章：工具接口开放之后，工具本身的设计质量决定智能体上限；第 6 篇 think 工具展示了在工具协议里给推理留位的后续演化；第 11 篇高级工具使用平台能力则把“定义工具集”进一步升级为平台工程；第 20 篇多智能体研究系统与第 24 篇 Managed Agents，可视为“编排多个快速子智能体”这条场景线的远期展开。<\/p><h4>实践启示<\/h4><p>结构化抽取与自然语言转 API 调用，至今仍是 tool use 回报率最高的两个起点；先让模型选对工具，再谈自主规划。对确定性要求高的流程，forced tool use 至今仍然好用；beta 期开发者拿 Opus 搭复杂用户侧助手的经验也说明，模型强不强，先看它工具用得好不好。把自然语言请求转成结构化 API 调用的模式，今天有了更响亮的名字——把产品变成智能体能调用的工具；门槛从未变过：工具定义越清晰，模型越少犯错。<\/p><h4>局限与时效<\/h4><p>这是 2024 年 5 月的产品快照：不能并行调用工具、案例数据只反映早期版本表现。如今 tool use 早已是所有主流模型 API 的标配能力，并行调用、流式、结构化输出等限制相继消失。读它的意义在于看清“工具调用是平台默认能力”这一行业假设是从哪一天开始成立的。另外，发布文中 42% 这类数字来自早期客户自述，不宜直接外推；读历史产品文时，场景清单比性能数字更有长期价值。<\/p>","34":"<h4>它在回应什么问题<\/h4><p>模型分数上涨时，最常被追问的是：这究竟是模型变强，还是评测外面的“壳”起了作用？2025 年 1 月 6 日 Anthropic 的这篇工程文章正面回答：升级版 Claude 3.5 Sonnet 在 SWE-bench Verified 拿到 49%，超过此前最强模型的 45%，而这一成绩靠的是一个刻意极简的 agent 脚手架。文章把提示词与两个工具的定义全部公开，意图是教开发者把自己的场景调到同等水平。<\/p><h4>核心内容拆解<\/h4><p>SWE-bench 考的是真实工程：模型拿到真实开源 Python 仓库在 issue 修复前的 checkout（本地工作副本），要理解、修改、测试代码，最终用关闭该 issue 的原 PR 真实单元测试评分。文章总结它流行的三个原因：用的是真实项目任务而非竞赛题或面试题；尚未饱和，写作时没有模型越过 50%；且测评的是“模型加脚手架”的整个 agent——同一模型换个脚手架，成绩可以差很远。Verified 是经人审确认可解的 500 题子集，是编码智能体最清晰的度量。<\/p><p>Anthropic 的设计哲学是把尽可能多的控制权交给模型本身、脚手架保持极简：一个提示词、一个执行 bash 命令的 Bash Tool、一个查看与编辑文件的 Edit Tool，基于 SWE-Agent 框架搭建，持续采样直到模型自认完成或触及 200k 上下文长度。提示词只给建议路径：先探索仓库、写脚本复现错误、改源码、重跑脚本确认修复、再想边界情况，但步骤之间的走法由模型自己决定，不被硬编码进某个固定流程；若不敏感于 token，文章还建议显式鼓励模型给出长回答。另外，运行基准时以 SWE-Agent 框架作为 agent 代码的基础，日志被整理成 THOUGHT、ACTION、OBSERVATION 三段呈现，但并不强制固定顺序。<\/p><p>两个工具的描述文本才是重头戏：Bash Tool 写明参数无需 XML 转义、无互联网但可用 apt 与 pip 的常用包镜像、状态跨调用持久、长命令请放后台运行；Edit Tool 围绕字符串替换设计，<code>old_str<\/code> 必须唯一匹配，否则报错让模型重试。团队广泛测试模型可能误解规格的方式，再回头改描述预防这些坑，并直言：像为人设计工具界面投入大量心思那样，为模型设计工具界面也理应如此。<\/p><h4>关键细节与数据<\/h4><ul><li>同一脚手架下各模型成绩：新 3.5 Sonnet 49%，此前 SOTA 45%，旧 3.5 Sonnet 33%，3 Opus 22%。<\/li><li>文中完整展示修复 sklearn RidgeClassifierCV 参数 bug 的过程：浏览目录结构、建复现脚本、确认报错、用 <code>str_replace<\/code> 修补构造函数、重跑验证，12 步完成；也有任务超过 100 轮、消耗超 10 万 token 才提交。<\/li><li>error-proofing 是关键手段：为防止模型在离开根目录后搞错相对路径，工具直接强制要求绝对路径。<\/li><\/ul><h4>与清单其他文章的呼应<\/h4><p>这套极简脚手架是第 13 篇《Claude Code 最佳实践》的实验室前身，最小工具集加充分自主权后来成为 Claude Code 的产品哲学；第 7 篇《为智能体写工具》把本文“工具描述要反复打磨”的经验展开成方法论；第 27 篇智能体评估则接续它“评测评的是整个 agent 而非裸模型”的提醒。<\/p><h4>实践启示<\/h4><p>调优 agent 时先怀疑脚手架而非模型：与其写复杂状态机，不如把工具描述写清楚、把错误信息写明白，让模型自己纠错。文章还观察到新模型更能自我纠正、会尝试不同解法而非重复同一错误——模型与脚手架需要一起升级。对只看分数的人还有个提醒：同一脚手架下新旧模型差出 16 个百分点，说明脚手架红利要先有底子好的模型才能兑现。<\/p><h4>局限与时效<\/h4><p>文章自己列出四大挑战：成功运行动辄数百轮、超 10 万 token，成本可观；评分受环境配置与补丁重复安装等系统问题干扰；模型看不见隐藏测试，常自以为成功，有的失败只是解法与原 PR 的测试不匹配；当时未能查看存盘图片与 URL 引用，Matplotlib 类任务调试困难，SWE-bench 已为此推出多模态评测。49% 是 2025 年 1 月的快照，此后 SWE-bench Verified 的纪录被一再刷新——本文的价值在方法论而非分数。<\/p>","35":"<h4>它在回应什么问题<\/h4><p>Claude Code 成名之后，开发者最常问的是：能不能把这一整套能力装进我自己的产品？这份平台文档给出肯定答案：Agent SDK 提供与 Claude Code 同款的工具、agent loop 与上下文管理，用 Python 或 TypeScript 编程调用。它对智能体的定义也值得划线：一个通过自主规划步骤、调用工具来读写文件、执行命令、编辑代码，从而完成任务的应用——不是聊天框，而是会自己拆解任务的东西。<\/p><h4>核心内容拆解<\/h4><p>文档最有价值的是四层定位对比，按谁来运行、内置多少、怎么触达划分，对照表让你按自己的构建方式对号入座：<strong>Agent SDK<\/strong> 面向把 Claude Code 的智能体嵌进自己的 Python/TypeScript 应用、由自己运维进程的场景，它是一个运行 Claude Code 二进制的库，自带内置工具、permissions、sessions、hooks；<strong>Claude Code CLI<\/strong> 面向终端交互式开发与一次性任务；<strong>Client SDK<\/strong> 面向直接从自己的代码调用 Claude API 的场景，工具循环要么自己写、要么交给其 beta tool runner 驱动；<strong>Managed Agents<\/strong> 面向让 Anthropic 托管智能体、经 Claude API 配置的场景，由托管的 agent harness 跑 agent loop，沙箱可选 Anthropic 管理的云端沙箱或你自托管基础设施上的沙箱，经 SDK、ant CLI 或 REST API 使用。四层之外还有兜底：其他语言可用 <code>-p<\/code> 加 <code>--output-format json<\/code> 以子进程方式驱动同一个 agent loop。这个四层划分本质是在回答一个问题：agent loop 跑在谁的机器上、谁为它的运行负责。值得注意的是 Agent SDK 的实现方式——它运行的是 Claude Code 二进制而非重新实现一套循环，这意味着 SDK 行为与 CLI 保持一致，也解释了为什么 skills 与配置能直接共享。<\/p><\/p><h4>关键细节与数据<\/h4><p>能力清单几乎就是 Claude Code 的功能索引：内置工具覆盖读、写、编辑文件、执行命令与搜索网页；hooks 在 agent 生命周期关键点运行自定义代码；subagents 为聚焦的子任务派生专职智能体；MCP 经 Model Context Protocol 连接外部工具与数据源；permissions 控制哪些工具自动执行、哪些需要批准；sessions 跨轮次维护上下文、之后可恢复或分叉；skills、commands 与 memory 从项目的 <code>.claude/<\/code> 与 <code>~/.claude/<\/code> 自动加载，与 Claude Code 一致；plugins 把 skills、agents、hooks 与 MCP 服务器打包、按本地路径加载。文档也划出边界：未经事先批准，Anthropic 不允许第三方开发者向用户提供 claude.ai 登录或配额，须用 API key 鉴权；品牌上允许 “Claude Agent” 或 “Powered by Claude”，不得自称 Claude Code、不得模仿其视觉元素。配套资源里有 Quickstart 教你造一个找出并修复 bug 的智能体——等于把 Claude Code 的招牌场景开放成模板；还有 agent loop 原理、从旧 Claude Code SDK 包迁移的指南（说明这批能力经历过一次命名与打包整理），以及讲多子智能体编排的 agent harness 设计文章。skills、commands 与 memory 的自动加载也意味着：你在终端里为 Claude Code 写的技能，装进 SDK 应用同样生效。<\/p><h4>与清单其他文章的呼应<\/h4><p>第 16 篇《造 Pi 学到的事》代表自己造 harness 的路线，本文代表复用成熟 harness 的路线，对读能看清自建与复用的成本边界；第 24 篇 Managed Agents 解耦大脑与双手，正是四层中最顶层托管形态的展开；第 26 篇 auto mode 权限与本文的 permissions 能力一脉相承；第 13 篇 Claude Code 最佳实践中的人机协作经验，在 SDK 场景大多依然适用。<\/p><h4>实践启示<\/h4><p>选层的判据是控制权与运维责任的对价：要最大控制选 Client SDK 自写循环；要开箱即用选 Agent SDK；要免运维选 Managed Agents。skills 与 plugins 的加载约定让 SDK 应用与 CLI 共享同一套项目配置，一套资产两处复用；先在 CLI 里调好技能，再搬进产品，是最平滑的路径。排查产品内智能体问题可借用 sessions 的恢复与分叉：把一次失败的运行分叉出来重放，成本远低于从零复现。<\/p><h4>局限与时效<\/h4><p>这是持续更新的文档页，API 细节以官方 changelog 为准；Python 与 TypeScript 之外的语言只能走 CLI 子进程。四层对比中托管与自托管的边界、沙箱的具体能力都指向更深的子文档，本页只是入口。另外它描述的是 Claude 生态内的分层，若你的模型供应商不唯一，可对照第 36 篇 Strands 等模型无关框架再作选型。<\/p>","36":"<h4>它在回应什么问题<\/h4><p>第 1 篇《Building effective agents》在“何时用框架”一节的忠告是：优先直接用 LLM API 写代码，框架会增加抽象层、遮蔽底层动作；确要用，就选你能看清底层的工具。本篇把三个被点名的代表并排解读：AWS 的开源代码优先框架 Strands、Ironclad 的可视化 IDE Rivet、低代码平台路线的 Vellum。三种形态的差异，本身就是对“框架到底解决什么”的三个答案。<\/p><h4>核心内容拆解<\/h4><p><strong>Strands<\/strong> 是三个样本中最“重”的一个：AWS 出品的开源工具箱，官网自称面向生产智能体，Python 与 TypeScript 双语言，已有 14000 多个项目。它分两层：<code>harness<\/code> 是装好的成品智能体，系统提示词、工具、memory、sessions、上下文管理的默认值都经过基准调优，CLI 与库两种用法皆可；Harness SDK 则让你从原语造起——<code>@tool<\/code> 装饰器从类型标注与 docstring 自动生成 schema，模型供应商可在 Bedrock、Anthropic、OpenAI、Google、Ollama 等之间切换而其余代码不动，多智能体提供 Agent-as-Tool、Swarm、Graph、A2A 等模式。外围还有进程内沙箱 shell（不 fork、不 exec、不碰裸系统调用，声明式放行文件、URL 与凭据），提供 25 个以上评估器加根因诊断、用户模拟与红队攻击的 Evals 套件，以及机器人、世界模型等实验室项目；文档覆盖会话持久、长期记忆、检查点、上下文管理、人机干预等生产议题，课程从第一个智能体一路讲到多智能体系统。客户证言称 Eightcap 用它十天内完成开发、平均调查耗时从 30 分钟降到 45 秒、节省 500 万美元运营成本；Verisk 的方案把平均修复时间降了 60%；有工程师把 LangGraph 的 40 行配置压到 3 行。<\/p><p><strong>Rivet<\/strong> 走完全相反的方向：Ironclad 开源的可视化 AI 编程环境，把复杂链路画成 prompt graph，在 IDE 里迭代与调试，再经 Node/TypeScript 集成跑进真实应用；远程执行器让你实时观察应用内 prompt 链的执行，调试不再靠打印日志。graph 以 YAML 文件保存，可进团队仓库、走熟悉的代码评审流程。Ironclad 自家的合同助手 Contract AI 就是它的代表作，能回答合同生命周期各阶段的问题。社区反馈里被反复提起的是三点：可视化让 agentic 逻辑一目了然、远程调试能看清应用内部执行、团队协作成本大幅降低。<\/p><p><strong>Vellum<\/strong> 代表第三条路线：不写代码、在平台上搭。但要诚实记录时效——2024 年末《Building effective agents》点名时它是企业低代码平台；本次抓取的 2026 年官网显示，它已转型为个人 AI 助理产品：本地优先、长期记忆、细粒度权限、高风险动作需明确批准，内置 Google Workspace、Slack、Notion 与文件系统等技能，可切 OpenAI、Anthropic、Gemini 或经 Ollama 用开源权重模型，云订阅每月 30 到 200 美元。它强调开源可查代码、Mac 原生，并可从 iOS、安卓、网页、语音、Slack 与终端等多入口触达，同一份记忆与任务跨设备同步。<\/p><h4>关键细节与数据<\/h4><p>三个样本恰好覆盖框架光谱的三段：Strands 押注“代码优先但默认值调优”，Rivet 押注“可视化让 agentic 逻辑看得见、可协作”，Vellum 曾押注“低代码降低门槛”。三者又都强调生产化：Strands 谈 observability、guardrails、Amazon Bedrock AgentCore 与多种部署目标，Rivet 谈版本化与团队评审，Vellum 现形态谈权限、本地数据与开源可查。<\/p><h4>与清单其他文章的呼应<\/h4><p>第 1 篇的核心警告——框架遮蔽底层——在本篇得到三份当代注脚：Strands 以“任何默认皆可下钻、无黑盒”回应，Rivet 以 YAML 可评审部分化解，Vellum 的转型则说明纯低代码定位在智能体时代的市场压力。第 16 篇《造 Pi 学到的事》是“不用框架”路线的最佳参照物；Strands 的 Evals 也可与第 27 篇智能体评估对读。<\/p><h4>实践启示<\/h4><p>选框架先问三个问题：团队主栈是代码还是图形？要不要模型供应商可换？出问题时需要多深的可见性？三者答案的组合基本能完成选型。另一个启示是框架自身会转向：把业务逻辑尽量放在框架之外的普通代码里，迁移成本最低。<\/p><h4>局限与时效<\/h4><p>Strands 与 Rivet 的内容来自官网自述，数字与客户案例未经独立验证；Vellum 的定位变化更提醒这类盘点保质期很短。本篇以 2026 年 10 月抓取页面为准，选型前务必复核各项目现状。<\/p>"};
+window.__EXTRA = {"articles":[{"id":31,"src":"anthropic","title":"Patterns for building agents (official cookbook)","zh":"五种模式的官方代码实现","url":"https://platform.claude.com/cookbook/patterns-agents-basic-workflows","date":"持续更新","mins":25,"level":"进阶","points":["官方 cookbook 把《Building effective agents》的基础工作流写成十几行可复制的 Python。","chain、parallel、route 三个函数分别对应顺序拆解、并发分发与分类分流。","route 用 XML 标签拆开推理与选择，分类加专用提示词的两层结构可直接搬用。"],"why":"概念读完就该看能跑的代码：这是五模式从幻灯片到实现的最短一跃。"},{"id":32,"src":"anthropic","title":"Introducing the Model Context Protocol","zh":"MCP 发布：把 AI 助手接到数据所在之处的开放标准","url":"https://www.anthropic.com/news/model-context-protocol","date":"2024-11","mins":10,"level":"入门","points":["MCP 用一个开放标准取代每个数据源一套的定制集成：服务器暴露数据，客户端连接。","发布当天即给出规范与 SDK、Claude Desktop 本地支持、开源服务器仓库三件套。","Block、Apollo 与 Zed、Replit、Sourcegraph 等厂商成为首批生态共建者。"],"why":"看行业事实标准的起点长什么样，才能判断今天的 MCP 生态哪些是初心、哪些是演化。"},{"id":33,"src":"anthropic","title":"Claude can now use tools","zh":"Claude 能用工具了：tool use 正式可用","url":"https://www.anthropic.com/news/tool-use-ga","date":"2024-05","mins":10,"level":"入门","points":["Tool use 在 Claude 3 全家族正式可用，覆盖 Messages API、Bedrock 与 Vertex AI。","官方给出五类用法：结构化抽取、自然语言转 API、查库问答、任务自动化、编排子智能体。","配套流式、forced tool use 与图片输入；当时尚不支持并行工具调用。"],"why":"回看 tool use 从 beta 到 GA 的起点，理解今天一切智能体能力都踩在这块基石上。"},{"id":34,"src":"anthropic","title":"Raising the bar on SWE-bench Verified with Claude 3.5 Sonnet","zh":"Claude 3.5 Sonnet 抬高 SWE-bench Verified 标杆","url":"https://www.anthropic.com/research/swe-bench-sonnet","date":"2025-01","mins":15,"level":"进阶","points":["升级版 Claude 3.5 Sonnet 以 49% 领先 SWE-bench Verified，超过此前 SOTA 的 45%。","取胜架构极简：一个提示词加 Bash、Edit 两个通用工具，把控制权尽量交给模型。","详述工具描述打磨与 error-proofing，主张像为人设计工具一样为模型设计工具。"],"why":"它是 Claude Code 哲学的实验室前身：少脚手架、好工具、信任模型自己判断。"},{"id":35,"src":"anthropic","title":"Agent SDK overview","zh":"Agent SDK 总览：把 Claude Code 当库用","url":"https://platform.claude.com/docs/en/agent-sdk/overview","date":"持续更新","mins":20,"level":"进阶","points":["Agent SDK 把 Claude Code 的工具、agent loop 与上下文管理打包成 Python/TypeScript 库。","Client SDK、Agent SDK、Managed Agents、CLI 四层按谁来运行、内置多少划分，按需选层。","SDK 自带内置工具、hooks、subagents、MCP、permissions、sessions、skills 与 plugins。"],"why":"想在自己的应用里复刻 Claude Code 级别的智能体，这是官方给出的正确入口。"},{"id":36,"src":"eco","title":"Framework landscape: Strands, Rivet & Vellum","zh":"框架生态速览：第一篇点名的三个框架","url":"https://strandsagents.com/","date":"—","mins":20,"level":"入门","points":["Strands：AWS 开源的代码优先框架，成品 harness 开箱即用，又可下钻到原语自行组装。","Rivet：Ironclad 出品的开源可视化 AI 编程环境，prompt graph 以 YAML 存储可版本评审。","Vellum：低代码平台路线的代表，抓取时官网已转型为本地优先的个人 AI 助理产品。"],"why":"框架要不要用、用哪种，先看这三个样本各自把赌注押在哪里。"}],"stage":{"id":6,"title":"延伸 · 第一篇的引用网络","goal":"《Building effective agents》是被引用最多的起点，官方在文中亲自指向的下一跳都在这里：五种模式的代码实现、MCP 与工具使用的发布现场、SWE-bench 实证、Agent SDK 总览，以及文中点名的三个外部框架。把它们当作第一篇的「注释与出处」来读。","arts":[31,32,33,34,35,36]}};
+/*DEPTH-INJECT-END*/
+/* ============ 状态与渲染 ============ */
+window.__DEPTH = window.__DEPTH || {};
+window.__EXTRA = window.__EXTRA || { articles: [], stage: null };
+const DEPTH = window.__DEPTH;
+const depthChars = id => {
+  const t = (DEPTH[id] || "").replace(/<[^>]+>/g, " ");
+  let n = 0;
+  for (const ch of t) { const c = ch.codePointAt(0); if (c >= 0x4e00 && c <= 0x9fff) n++; }
+  return n;
+};
+if (window.__EXTRA.articles.length) ARTICLES.push(...window.__EXTRA.articles);
+if (window.__EXTRA.stage) STAGES.push(window.__EXTRA.stage);
+const KEY = "aiwf_reading_progress_v1";
+let readIds = new Set(JSON.parse(localStorage.getItem(KEY) || "[]"));
+let curSrc = "all";
+let hideRead = false;
+let focusIdx = 0;
+let focusOpen = false;
+
+const ORDER = STAGES.flatMap(s => s.arts);
+const byId = id => ARTICLES.find(a => a.id === id);
+const stageOf = id => STAGES.find(s => s.arts.includes(id));
+
+function save() { localStorage.setItem(KEY, JSON.stringify([...readIds])); }
+function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+function srcBadge(a) {
+  const s = SOURCES[a.src];
+  return `<span class="badge ${a.src}">${s.name}</span>`;
+}
+
+function cardHTML(a, idx, inFocus) {
+  const st = stageOf(a.id);
+  const read = readIds.has(a.id);
+  const pts = a.points.map(p => `<li>${esc(p)}</li>`).join("");
+  const links = (a.links || []).map(l => `<a href="${l.url}" target="_blank" rel="noopener">${esc(l.name)}</a>`).join("");
+  const mins = a.mins ? ` · 约 ${a.mins} 分钟` : "";
+  return `
+  <article class="card ${read ? "read" : ""}" data-id="${a.id}">
+    <div class="crow1">
+      <span class="idx mono">${String(idx).padStart(2, "0")}</span>
+      ${srcBadge(a)}
+      <span class="lv">${a.level}</span>
+      <span class="meta">${esc(a.date)}${mins}</span>
+      <span class="check ${read ? "on" : ""}" data-check="${a.id}">${read ? "✓ 已读" : "标记已读"}</span>
+    </div>
+    <h3 class="c-title" data-focus="${a.id}">${esc(a.title)}</h3>
+    <div class="c-zh">${esc(a.zh)}${inFocus ? "" : ` · 阶段 ${st.id}「${esc(st.title.split("：")[0])}」`}</div>
+    <ul class="c-points">${pts}</ul>
+    ${links ? `<div class="extra-links">${links}</div>` : ""}
+    <div class="c-why"><b>为什么读</b> ${esc(a.why)}</div>
+    ${DEPTH[a.id] ? `<details class="depth"${inFocus ? " open" : ""}><summary>📖 深度解读（约 ${depthChars(a.id)} 字）</summary><div class="depth-body">${DEPTH[a.id]}</div></details>` : ""}
+    <div class="c-actions">
+      <a class="c-link" href="${a.url}" target="_blank" rel="noopener">阅读原文</a>
+      ${inFocus ? "" : `<button class="c-focus" data-focus="${a.id}">▶ 进入专注模式</button>`}
+    </div>
+  </article>`;
+}
+
+function renderSide() {
+  document.getElementById("sideNav").innerHTML = STAGES.map(s => {
+    const done = s.arts.filter(id => readIds.has(id)).length;
+    return `<div class="st">
+      <div class="st-title">阶段 ${s.id}</div>
+      <a href="#stage-${s.id}"><span>${esc(s.title.split("：")[0])}</span><span class="n">${done}/${s.arts.length}</span></a>
+    </div>`;
+  }).join("") + `<div class="tip">快捷键（专注模式内）：<kbd>←</kbd> <kbd>→</kbd> 切换 · <kbd>Enter</kbd> 已读并继续 · <kbd>Esc</kbd> 退出。点击文章标题进入专注模式。</div>`;
+}
+
+function renderList() {
+  const html = [];
+  let idx = 0;
+  for (const s of STAGES) {
+    const shown = s.arts.filter(id => {
+      if (curSrc !== "all" && byId(id).src !== curSrc) return false;
+      if (hideRead && readIds.has(id)) return false;
+      return true;
+    });
+    const done = s.arts.filter(id => readIds.has(id)).length;
+    html.push(`<section class="stage" id="stage-${s.id}">
+      <div class="stage-head">
+        <span class="stage-no">${s.id}</span>
+        <span class="stage-title">${esc(s.title)}</span>
+        <span class="stage-prog">${done}/${s.arts.length} 已读</span>
+      </div>
+      <div class="stage-goal">${esc(s.goal)}</div>
+    </section>`);
+    if (shown.length === 0) {
+      html.push(`<div class="empty">（本阶段暂无符合条件的文章）</div>`);
+    }
+    for (const id of shown) {
+      idx++;
+      html.push(cardHTML(byId(id), idx, false));
+    }
+  }
+  document.getElementById("list").innerHTML = html.join("");
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = ARTICLES.length;
+  const done = ARTICLES.filter(a => readIds.has(a.id)).length;
+  const pct = Math.round(done / total * 100);
+  document.getElementById("totalBar").style.width = pct + "%";
+  document.getElementById("totalPct").textContent = pct + "%";
+  document.getElementById("totalText").textContent = `已读 ${done} / ${total}`;
+  document.getElementById("heroCount").textContent = total;
+  renderSide();
+}
+
+/* ---------- 专注模式 ---------- */
+function openFocus(id) {
+  focusIdx = Math.max(0, ORDER.indexOf(id));
+  focusOpen = true;
+  document.getElementById("focus").classList.add("open");
+  document.body.style.overflow = "hidden";
+  renderFocus();
+}
+function closeFocus() {
+  focusOpen = false;
+  document.getElementById("focus").classList.remove("open");
+  document.body.style.overflow = "";
+}
+function renderFocus() {
+  const total = ORDER.length;
+  if (focusIdx >= total) {
+    const done = ARTICLES.filter(a => readIds.has(a.id)).length;
+    document.getElementById("fStep").textContent = "完成";
+    document.getElementById("fBar").style.width = "100%";
+    document.getElementById("fBody").innerHTML = `
+      <div class="fcard"><div class="fdone">
+        <h2>${done === total ? "🎉 全部读完！" : "已经到底了"}</h2>
+        <p>${done === total
+          ? "五个阶段全部完成。接下来最好的下一步：把平台跑起来，把工作流用在自己的活上。"
+          : `本轮读完 ${done}/${total} 篇。可以退出后勾选漏掉的文章，或重新开始一轮专注阅读。`}</p>
+        <button class="btn primary" id="fRestart">回到开头再读一轮</button>
+        <button class="btn" id="fClose2" style="margin-left:8px">退出</button>
+      </div></div>`;
+    document.getElementById("fRestart").onclick = () => { focusIdx = 0; renderFocus(); };
+    document.getElementById("fClose2").onclick = closeFocus;
+    return;
+  }
+  const a = byId(ORDER[focusIdx]);
+  const st = stageOf(a.id);
+  document.getElementById("fStep").textContent = `阶段 ${st.id} · 第 ${focusIdx + 1} / ${total} 篇`;
+  document.getElementById("fBar").style.width = (focusIdx / total * 100) + "%";
+  document.getElementById("fBody").innerHTML = `
+    <div class="fcard">
+      <div class="fstage">阶段 ${st.id} — ${esc(st.title)}</div>
+      ${cardHTML(a, focusIdx + 1, true)}
+    </div>`;
+  const btn = document.createElement("div");
+  btn.className = "fnav";
+  btn.innerHTML = `
+    <button class="btn" id="fPrev" ${focusIdx === 0 ? "disabled" : ""}>← 上一篇</button>
+    <button class="btn" id="fNext" ${focusIdx === total - 1 ? "disabled" : ""}>下一篇 →</button>
+    <button class="btn primary" id="fMark">${readIds.has(a.id) ? "已读 · 继续 →" : "✓ 标记已读并继续"}</button>
+    <a class="btn" href="${a.url}" target="_blank" rel="noopener" style="text-decoration:none">阅读原文 ↗</a>`;
+  document.querySelector("#fBody .fcard").after(btn);
+  document.getElementById("fPrev").onclick = () => { focusIdx--; renderFocus(); };
+  document.getElementById("fNext").onclick = () => { focusIdx++; renderFocus(); };
+  document.getElementById("fMark").onclick = () => {
+    readIds.add(a.id); save(); focusIdx++; renderFocus(); renderList();
+  };
+  window.scrollTo(0, 0);
+  document.getElementById("focus").scrollTop = 0;
+}
+
+/* ---------- 事件 ---------- */
+document.addEventListener("click", e => {
+  const check = e.target.closest("[data-check]");
+  if (check) {
+    const id = +check.dataset.check;
+    readIds.has(id) ? readIds.delete(id) : readIds.add(id);
+    save(); renderList();
+    if (focusOpen) renderFocus();
+    return;
+  }
+  const f = e.target.closest("[data-focus]");
+  if (f) openFocus(+f.dataset.focus);
+});
+document.querySelectorAll(".chip[data-src]").forEach(c => {
+  c.onclick = () => {
+    document.querySelectorAll(".chip[data-src]").forEach(x => x.classList.remove("on"));
+    c.classList.add("on");
+    curSrc = c.dataset.src;
+    renderList();
+  };
+});
+document.getElementById("toggleRead").onclick = e => {
+  hideRead = !hideRead;
+  e.target.classList.toggle("on", hideRead);
+  renderList();
+};
+document.getElementById("startFocus").onclick = () => {
+  const firstUnread = ORDER.findIndex(id => !readIds.has(id));
+  openFocus(firstUnread === -1 ? ORDER[0] : ORDER[firstUnread]);
+};
+document.getElementById("resetBtn").onclick = () => {
+  if (confirm("确定清空全部阅读进度吗？")) {
+    readIds = new Set(); save(); renderList();
+  }
+};
+document.getElementById("fExit").onclick = closeFocus;
+document.addEventListener("keydown", e => {
+  if (!focusOpen) return;
+  if (e.key === "Escape") closeFocus();
+  else if (e.key === "ArrowRight" && focusIdx < ORDER.length - 1) { focusIdx++; renderFocus(); }
+  else if (e.key === "ArrowLeft" && focusIdx > 0) { focusIdx--; renderFocus(); }
+  else if (e.key === "Enter" && !e.target.closest("a")) {
+    e.preventDefault();
+    document.getElementById("fMark")?.click();
+  }
+});
+
+renderList();
+</script>
+</body>
+</html>
