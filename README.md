@@ -1,6 +1,6 @@
 # AI 工作流 · 递进阅读
 
-一个本地阅读器，收录 **Anthropic (Claude)、OpenAI、Pi、Nous Research (Hermes)** 四个平台关于 AI 工作流 / 智能体的文章与报告，外加第一篇的官方引用网络。所有链接已于 **2026-09-29** 用 Chromium 逐条打开核对；**每篇附 1000–3000 字中文深度解读**（2026-10-02 基于全文撰写）。
+一个本地阅读器，收录 **Anthropic (Claude)、OpenAI、Pi、Nous Research (Hermes)** 四个平台关于 AI 工作流 / 智能体的文章与报告、第一篇的官方引用网络，以及 **agent/harness 领域 20 篇最有方法论增量的论文与技术报告**。所有链接已于 **2026-09-29** 用 Chromium 逐条打开核对；**每篇附 1000–3000 字中文深度解读**（工程类完成于 2026-10-02，论文类完成于 2026-10-03，基于全文撰写）。
 
 ## 怎么打开
 
@@ -15,7 +15,7 @@
   # 打开 http://127.0.0.1:8642
   ```
 
-## 递进结构（6 个阶段 · 36 篇）
+## 递进结构（9 个阶段 · 56 篇）
 
 | 阶段 | 主题 | 篇数 |
 |---|---|---|
@@ -25,6 +25,10 @@
 | 4 | 长时运行与可靠性：harness、安全与评估 | 7 |
 | 5 | 走出文章：延伸阅读与动手环节 | 2 |
 | 6 | 延伸 · 第一篇的引用网络（Building effective agents 的官方外链解析） | 6 |
+| 7 | 论文 · 评测：把智能体变成可测量的对象（SWE-bench / τ-bench / METR / AI Agents That Matter / HAL / Agent-as-a-Judge / 评测噪声） | 7 |
+| 8 | 论文 · 可靠性与控制面：从提示词防御到系统级治理（间接注入 / CaMeL / AI Control / MAST / Progent / A2A / AGENTS.md） | 7 |
+| 9 | 论文 · 长时程与多智能体协作推理（Generative Agents / Voyager / MemGPT / Reflexion / ToT / 别建多智能体） | 6 |
+| 7-9 | 论文层只收有**方法论增量**的工作：每个工作改变什么、为什么重要、值得深读哪些章节，都有专文论证 | |
 
 阶段 6 收录第一篇文章亲自指向的下一跳：五模式 cookbook 代码页、MCP 发布文、Tool Use GA、SWE-bench Sonnet 研究、Agent SDK 总览，以及文中点名的三个外部框架（Strands / Rivet / Vellum）对比。
 
