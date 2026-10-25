@@ -15,20 +15,22 @@
   # 打开 http://127.0.0.1:8642
   ```
 
-## 递进结构（9 个阶段 · 56 篇）
+## 递进结构（9 个阶段 · 58 篇）
 
 | 阶段 | 主题 | 篇数 |
 |---|---|---|
 | 1 | 地基：理解 AI 工作流与智能体（工作流 vs 智能体的判断框架） | 4 |
 | 2 | 核心机制：上下文、工具与执行环境（含 Anthropic 与 Pi 在 MCP 上的交锋） | 8 |
-| 3 | 实战：四大平台的编程智能体（Claude Code / Codex / Pi / Hermes） | 9 |
+| 3 | 实战：各家的编程智能体与 harness 生态（Claude Code / Codex / Pi / Hermes / DeepSeek Harness） | 10 |
 | 4 | 长时运行与可靠性：harness、安全与评估 | 7 |
 | 5 | 走出文章：延伸阅读与动手环节 | 2 |
 | 6 | 延伸 · 第一篇的引用网络（Building effective agents 的官方外链解析） | 6 |
-| 7 | 论文 · 评测：把智能体变成可测量的对象（SWE-bench / τ-bench / METR / AI Agents That Matter / HAL / Agent-as-a-Judge / 评测噪声） | 7 |
+| 7 | 论文 · 评测：把智能体变成可测量的对象（SWE-bench / τ-bench / METR / AI Agents That Matter / HAL / Agent-as-a-Judge / 评测噪声 / 可靠性画像） | 8 |
 | 8 | 论文 · 可靠性与控制面：从提示词防御到系统级治理（间接注入 / CaMeL / AI Control / MAST / Progent / A2A / AGENTS.md） | 7 |
 | 9 | 论文 · 长时程与多智能体协作推理（Generative Agents / Voyager / MemGPT / Reflexion / ToT / 别建多智能体） | 6 |
 | 7-9 | 论文层只收有**方法论增量**的工作：每个工作改变什么、为什么重要、值得深读哪些章节，都有专文论证 | |
+
+> 全库于 2026-10-03 做过一轮保鲜复核：56 篇链接重验、10 篇标题随官方改版同步、Hermes 4 TR 直链失效已改入口、补收 DeepSeek Harness（2026-08 开源，"Everything is a Plugin"）与《Towards a Science of AI Agent Reliability》（arXiv 2602.16666）。
 
 阶段 6 收录第一篇文章亲自指向的下一跳：五模式 cookbook 代码页、MCP 发布文、Tool Use GA、SWE-bench Sonnet 研究、Agent SDK 总览，以及文中点名的三个外部框架（Strands / Rivet / Vellum）对比。
 
